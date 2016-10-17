@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007-2015 Peter Monks.
+ * Copyright (C) 2007-2016 Peter Monks.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -57,7 +57,7 @@ public final class FilesystemBulkImportItemVersion
 {
     @SuppressWarnings("unused")
     private final static Log log = LogFactory.getLog(FilesystemBulkImportItemVersion.class);
-    
+
     private final MimetypeService mimeTypeService;
     private final ContentStore    configuredContentStore;
     private final MetadataLoader  metadataLoader;
@@ -103,7 +103,7 @@ public final class FilesystemBulkImportItemVersion
             cachedSizeInBytes = contentFile.length();
         }
     }
-    
+
     public File getContentFile()
     {
         return(contentReference);
@@ -113,7 +113,17 @@ public final class FilesystemBulkImportItemVersion
     {
         return(isDirectory);
     }
-    
+
+    /**
+     * @see org.alfresco.extension.bulkimport.source.BulkImportItemVersion#getVersionComment()
+     */
+    @Override
+    public String getVersionComment()
+    {
+        loadMetadataIfNecessary();
+        return(cachedMetadata.getVersionComment());
+    }
+
     /**
      * @see org.alfresco.extension.bulkimport.source.BulkImportItemVersion#getAspects()
      */
@@ -236,7 +246,7 @@ public final class FilesystemBulkImportItemVersion
         {
             cachedMetadata   = metadataLoader.loadMetadata(metadataReference);
             contentIsInPlace = false;
-            
+
             if (contentReference != null)
             {
                 try

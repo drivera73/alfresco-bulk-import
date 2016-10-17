@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007-2015 Peter Monks.
+ * Copyright (C) 2007-2016 Peter Monks.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -92,8 +92,8 @@ public final class FilesystemBulkImportSource
         
         if (sourceDirectory != null)
         {
-            result = new HashMap<String, String>();
-            result.put("Source directory", sourceDirectory.getAbsolutePath());
+            result = new HashMap<>();
+            result.put("Source Directory", sourceDirectory.getAbsolutePath());
         }
         
         return(result);
@@ -163,7 +163,7 @@ public final class FilesystemBulkImportSource
 
 
     /**
-     * @see org.alfresco.extension.bulkimport.source.BulkImportSource#scanFiles(java.util.Map, org.alfresco.extension.bulkimport.source.BulkImportSourceStatus, org.alfresco.extension.bulkimport.BulkImportCallback)
+     * @see org.alfresco.extension.bulkimport.source.BulkImportSource#scanFiles(BulkImportSourceStatus, BulkImportCallback)
      */
     @Override
     public void scanFiles(BulkImportSourceStatus status, BulkImportCallback callback)

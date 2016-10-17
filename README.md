@@ -5,6 +5,11 @@
 [![Downloads](https://img.shields.io/github/downloads/pmonks/alfresco-bulk-import/latest/total.svg)](https://github.com/pmonks/alfresco-bulk-import/releases)
 [![Open Issues](https://img.shields.io/github/issues/pmonks/alfresco-bulk-import.svg)](https://github.com/pmonks/alfresco-bulk-import/issues)
 [![License](https://img.shields.io/github/license/pmonks/alfresco-bulk-import.svg)](https://github.com/pmonks/alfresco-bulk-import/blob/master/LICENSE)
+[![Codacy](https://api.codacy.com/project/badge/Grade/53b50c15d3614e30bb6d963dc7563349)](https://www.codacy.com/app/pmonks/alfresco-bulk-import)
+[![Dependency Status](https://www.versioneye.com/user/projects/577fc7185bb1390040177bff/badge.svg?style=flat-square)](https://www.versioneye.com/user/projects/577fc7185bb1390040177bff?child=summary#tab-dependencies)
+[![Code Climate](https://codeclimate.com/github/pmonks/alfresco-bulk-import/badges/gpa.svg)](https://codeclimate.com/github/pmonks/alfresco-bulk-import)
+[![GitHub Stats](https://img.shields.io/badge/github-stats-ff5500.svg)](http://githubstats.com/pmonks/alfresco-bulk-import)
+[![Project Stats](https://www.openhub.net/p/alfresco-bulk-import/widgets/project_thin_badge.gif)](https://www.openhub.net/p/alfresco-bulk-import)
 
 ## What Is It?
 A high performance bulk import tool for the open source [Alfresco Document
@@ -20,6 +25,7 @@ In terms of benchmarks, the old v1.x versions of the tool have regularly demonst
  * [Installation](https://github.com/pmonks/alfresco-bulk-import/wiki/Installation)
  * [Usage](https://github.com/pmonks/alfresco-bulk-import/wiki/Usage)
  * [Troubleshooting Tips](https://github.com/pmonks/alfresco-bulk-import/wiki/Troubleshooting)
+ * [FAQ](https://github.com/pmonks/alfresco-bulk-import/wiki/FAQ)
  * [All Documentation](https://github.com/pmonks/alfresco-bulk-import/wiki/Home)
 
 ## Resources

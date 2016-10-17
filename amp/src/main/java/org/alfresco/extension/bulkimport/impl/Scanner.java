@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007-2015 Peter Monks.
+ * Copyright (C) 2007-2016 Peter Monks.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,11 +23,10 @@ import java.util.ArrayList;
 import java.util.IllegalFormatException;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Phaser;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.nio.channels.ClosedByInterruptException;
 
+import org.alfresco.extension.bulkimport.util.ThreadPauser;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -37,7 +36,7 @@ import org.alfresco.service.cmr.repository.NodeRef;
 import org.alfresco.extension.bulkimport.BulkImportCallback;
 import org.alfresco.extension.bulkimport.BulkImportCompletionHandler;
 import org.alfresco.extension.bulkimport.BulkImportStatus;
-import org.alfresco.extension.bulkimport.impl.WritableBulkImportStatus;
+
 import org.alfresco.extension.bulkimport.source.BulkImportItem;
 import org.alfresco.extension.bulkimport.source.BulkImportSource;
 import org.alfresco.extension.bulkimport.source.BulkImportItemVersion;
@@ -67,8 +66,7 @@ public final class Scanner
     private final static String PARAMETER_DRY_RUN          = "dryRun";
     
     private final static int MULTITHREADING_THRESHOLD = 3;    // The number of batches above which multi-threading kicks in
-    private final static int JOBS_PER_PHASER          = 256;  // TODO: tune this
-    
+
     private final static int ONE_GIGABYTE = (int)Math.pow(2, 30);
 
     private final static BulkImportCompletionHandler loggingBulkImportCompletionHandler = new LoggingBulkImportCompletionHandler();
@@ -76,6 +74,7 @@ public final class Scanner
     private final String                            userId;
     private final int                               batchWeight;
     private final WritableBulkImportStatus          importStatus;
+    private final ThreadPauser                      pauser;
     private final BulkImportSource                  source;
     private final NodeRef                           target;
     private final String                            targetAsPath;
@@ -89,19 +88,18 @@ public final class Scanner
     // Stateful unpleasantness
     private Map<String, List<String>>                   parameters;
     private BulkImportThreadPoolExecutor                importThreadPool;
-    private Phaser                                      rootPhaser;
-    private Phaser                                      currentPhaser;
     private int                                         currentBatchNumber;
     private List<BulkImportItem<BulkImportItemVersion>> currentBatch;
     private int                                         weightOfCurrentBatch;
     private boolean                                     filePhase;
     private boolean                                     multiThreadedImport;
-    
+
     
     public Scanner(final ServiceRegistry                   serviceRegistry,
                    final String                            userId,
                    final int                               batchWeight,
                    final WritableBulkImportStatus          importStatus,
+                   final ThreadPauser                      pauser,
                    final BulkImportSource                  source,
                    final Map<String, List<String>>         parameters,
                    final NodeRef                           target,
@@ -114,6 +112,7 @@ public final class Scanner
         assert userId           != null : "userId must not be null.";
         assert batchWeight      > 0     : "batchWeight must be > 0.";
         assert importStatus     != null : "importStatus must not be null.";
+        assert pauser           != null : "pauser must not be null.";
         assert source           != null : "source must not be null.";
         assert parameters       != null : "parameters must not be null.";
         assert target           != null : "target must not be null.";
@@ -124,6 +123,7 @@ public final class Scanner
         this.userId             = userId;
         this.batchWeight        = batchWeight;
         this.importStatus       = importStatus;
+        this.pauser             = pauser;
         this.source             = source;
         this.parameters         = parameters;
         this.target             = target;
@@ -135,13 +135,11 @@ public final class Scanner
         this.replaceExisting = parameters.get(PARAMETER_REPLACE_EXISTING) == null ? false : Boolean.parseBoolean(parameters.get(PARAMETER_REPLACE_EXISTING).get(0));
         this.dryRun          = parameters.get(PARAMETER_DRY_RUN)          == null ? false : Boolean.parseBoolean(parameters.get(PARAMETER_DRY_RUN).get(0));
 
-        rootPhaser           = new Phaser();
-        currentPhaser        = rootPhaser;
-        currentBatchNumber   = 0;
-        currentBatch         = null;
-        weightOfCurrentBatch = 0;
-        filePhase            = false;
-        multiThreadedImport  = false;
+        this.currentBatchNumber   = 0;
+        this.currentBatch         = null;
+        this.weightOfCurrentBatch = 0;
+        this.filePhase            = false;
+        this.multiThreadedImport  = false;
     }
     
     
@@ -167,9 +165,7 @@ public final class Scanner
                                        batchWeight,
                                        inPlacePossible,
                                        dryRun);
-            
-            rootPhaser.register();
-            
+
             // ------------------------------------------------------------------
             // Phase 1 - Folder scanning (single threaded)
             // ------------------------------------------------------------------
@@ -225,7 +221,7 @@ public final class Scanner
             
             try
             {
-                importThreadPool.await();
+                importThreadPool.awaitTermination(Long.MAX_VALUE, TimeUnit.DAYS);  // Wait forever (technically merely a very long time, but whatevs...)
             }
             catch (final InterruptedException ie)
             {
@@ -302,7 +298,7 @@ public final class Scanner
         if (currentBatch == null)
         {
             currentBatchNumber++;
-            currentBatch         = new ArrayList<BulkImportItem<BulkImportItemVersion>>(batchWeight);
+            currentBatch         = new ArrayList<>(batchWeight);
             weightOfCurrentBatch = 0;
         }
         
@@ -310,11 +306,14 @@ public final class Scanner
         currentBatch.add(item);
         weightOfCurrentBatch += weight;
     }
-    
-    
+
+
     private synchronized void submitCurrentBatch()
         throws InterruptedException
     {
+        // Implement pauses at batch boundaries only
+        pauser.blockIfPaused();
+
         if (currentBatch != null && currentBatch.size() > 0)
         {
             final Batch batch = new Batch(currentBatchNumber, currentBatch);
@@ -331,7 +330,7 @@ public final class Scanner
             else
             {
                 // Import the batch directly on this thread
-                batchImporter.importBatch(this, userId, target, batch, replaceExisting, dryRun);
+                batchImporter.importBatch(userId, target, batch, replaceExisting, dryRun);
                 
                 // Check if the multi-threading threshold has been reached
                 multiThreadedImport = filePhase && currentBatchNumber >= MULTITHREADING_THRESHOLD;
@@ -343,20 +342,6 @@ public final class Scanner
     
     
     /**
-     * @return The current phaser to use for job tracking <i>(will not be null)</i>.
-     */
-    private synchronized Phaser getCurrentPhaser()
-    {
-        if (currentPhaser.getRegisteredParties() > JOBS_PER_PHASER)
-        {
-            currentPhaser = new Phaser(rootPhaser);
-        }
-        
-        return(currentPhaser);
-    }
-    
-    
-    /**
      * Used to submit a batch to the import thread pool.  Note that this method
      * can block (due to the use of a blocking queue in the thread pool).
      * 
@@ -364,10 +349,18 @@ public final class Scanner
      */
     private void submitBatch(final Batch batch)
     {
-        if (batch != null &&
-            batch.size() > 0)
+        if (batch        != null &&
+            batch.size() >  0)
         {
-            importThreadPool.execute(new BatchImportJob(getCurrentPhaser(), batch));
+            if (importStatus.inProgress() &&
+                !importStatus.isStopping())
+            {
+                importThreadPool.execute(new BatchImportJob(batch));
+            }
+            else
+            {
+                if (warn(log)) warn(log, "New batch submitted during shutdown - ignoring new work.");
+            }
         }
     }
     
@@ -381,32 +374,19 @@ public final class Scanner
     private final void awaitCompletion()
         throws InterruptedException
     {
-        // No need to wait if we didn't go multi-threaded
         if (multiThreadedImport)
         {
-            // ...wait for everything to wrap up...
+            // Log status then wait for everything to wrap up...
             if (debug(log)) debug(log, "Scanning complete. Waiting for completion of multithreaded import.");
             logStatusInfo();
+        }
 
-            final int phaseNumber = rootPhaser.arriveAndDeregister();
-            boolean   done        = false;
-            
-            while (!done)
-            {
-                try
-                {
-                    rootPhaser.awaitAdvanceInterruptibly(phaseNumber, SLEEP_TIME, SLEEP_TIME_UNITS);
-                    done = true;
-                }
-                catch (final TimeoutException te)
-                {
-                    // Log a status message every SLEEP_TIME SLEEP_TIME_UNITS (e.g. 10 minutes), then repeat
-                    logStatusInfo();
-                }
-            }
-            
-            importThreadPool.shutdown();
-            importThreadPool.await();
+        importThreadPool.shutdown();  // Orderly shutdown (lets the queue drain)
+
+        // Log status every hour, then go back to waiting - in single threaded case this won't wait at all
+        while (!importThreadPool.awaitTermination(1, TimeUnit.HOURS))
+        {
+            logStatusInfo();
         }
     }
     
@@ -420,7 +400,7 @@ public final class Scanner
         {
             try
             {
-                final int   batchesInProgress           = importThreadPool.queueSize() + importThreadPool.getActiveCount();
+                final int   batchesInProgress           = importThreadPool.getQueueSize() + importThreadPool.getActiveCount();
                 final Float batchesPerSecond            = importStatus.getTargetCounterRate(BulkImportStatus.TARGET_COUNTER_BATCHES_COMPLETE, SECONDS);
                 final Long  estimatedCompletionTimeInNs = importStatus.getEstimatedRemainingDurationInNs();
                 String      message                     = null;
@@ -476,13 +456,11 @@ public final class Scanner
     private final class BatchImportJob
         implements Runnable
     {
-        private final Phaser phaser;
         private final Batch  batch;
         
-        public BatchImportJob(final Phaser phaser, final Batch batch)
+        public BatchImportJob(final Batch batch)
         {
-            this.phaser = phaser;
-            this.batch  = batch;
+            this.batch = batch;
         }
         
         
@@ -491,18 +469,7 @@ public final class Scanner
         {
             try
             {
-                phaser.register();
-                batchImporter.importBatch(Scanner.this, userId, target, batch, replaceExisting, dryRun);
-                phaser.arrive();
-            }
-            catch (final OutOfOrderBatchException ooobe)
-            {
-                if (warn(log)) warn(log,  "Batch #" + batch.getNumber() + " was out-of-order - parent " + ooobe.getMissingParentPath() + " doesn't exist. Rolling back and requeuing.");
-                
-                // Requeue the batch and swallow the exception
-                importStatus.incrementTargetCounter(BulkImportStatus.TARGET_COUNTER_OUT_OF_ORDER_RETRIES);
-                phaser.arrive();
-                submitBatch(batch);
+                batchImporter.importBatch(userId, target, batch, replaceExisting, dryRun);
             }
             catch (final Throwable t)
             {

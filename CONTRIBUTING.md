@@ -20,59 +20,34 @@ the above statements.
 
 # Contributing Issues
 
-You can create an issue [here](https://github.com/pmonks/alfresco-bulk-import/issues),
-but before doing so please read the notes below on submitting issues.
+## Prerequisites
 
-First off, please review the [troubleshooting documentation](https://github.com/pmonks/alfresco-bulk-import/wiki/Troubleshooting)
-before creating an issue.  If you're not 100% sure that what you're seeing is a
-bug, it's worth asking on the [mailing list](https://groups.google.com/forum/#!forum/alfresco-bulk-filesystem-import).
-Please also do a basic check for duplicates.  A simple search for exception
-error messages or a summary of the unexpected behaviour should suffice.  If in
-doubt, go ahead and raise a new issue and I'll mark it as a duplicate if needed.
+* [ ] Have you reviewed the [troubleshooting guide](https://github.com/pmonks/alfresco-bulk-import/wiki/Troubleshooting)?
+* [ ]  Have you [searched for duplicates](https://github.com/pmonks/alfresco-bulk-import/issues?utf8=%E2%9C%93&q=)?  A simple search for exception error messages or a summary of the unexpected behaviour should suffice.
+* [ ] Have you confirmed you're running the Bulk Import Tool, and *not* the embedded fork?  See the [troubleshooting guide](https://github.com/pmonks/alfresco-bulk-import/wiki/Troubleshooting#embedded-fork) for details on validating this.
+* [ ] Are you running the [latest release of the Bulk Import Tool](https://github.com/pmonks/alfresco-bulk-import/releases)?
+* [ ] Are you sure this is a bug or missing capability?  If unsure, please ask on the [mailing list](https://groups.google.com/forum/#!forum/alfresco-bulk-filesystem-import) first.
 
-Once you're sure you've found a new issue, please use the following format for
-the body:
-
-```markdown
-# Steps to Reproduce:
- 1. ...step 1 description...
- 2. ...step 2 description...
-
-# Expected Result:
-...description of what you expected to see...
-
-# Actual Result:
-...what actually happened, including full exceptions (please include the entire
-stack trace), log entries, screen shots where appropriate, etc....
-
-# Environment:
-...your operating system, database, app server, JVM version, Alfresco edition
-and version, etc....
-```
-
-Please use [Markdown formatting](https://help.github.com/articles/github-flavored-markdown/)
-liberally to assist in readability - [code fences](https://help.github.com/articles/github-flavored-markdown/#fenced-code-blocks)
-for exception stack traces and log entries, for example, massively improve
-readability.
-
-Where known, please tag new issues with either "Bug" (tool explicitly supports
-the capability, but it doesn't work as described) or "Enhancement" (tool is
-missing a useful capability).
+## Raising an Issue
+* Create your issue [here](https://github.com/pmonks/alfresco-bulk-import/issues/new).
+* New issues contain two templates in the description: bug report and enhancement request. Please pick the most appropriate for your issue, and delete the other.
+  * Please also tag the new issue with either "Bug" or "Enhancement".
+* Please use [Markdown formatting](https://help.github.com/categories/writing-on-github/)
+liberally to assist in readability.
+  * [Code fences](https://help.github.com/articles/creating-and-highlighting-code-blocks/) for exception stack traces and log entries, for example, massively improve readability.
 
 # Contributing Pull Requests (Code & Docs)
 To make review of PRs easier, please:
 
- * please make sure your PRs will merge cleanly - PRs that don't are unlikely to be accepted.
- * for code contributions, follow [Alfresco's coding standards](https://wiki.alfresco.com/wiki/Coding_Standards).
- * for documentation contributions, follow the general structure, language, and
-   tone of the [existing docs](https://github.com/pmonks/alfresco-bulk-import/wiki)
- * keep PRs small and cohesive - if you have multiple contributions, please
-   submit them as independent PRs.
- * reference issue #s if your PR has anything to do with an issue (even if it
-   doesn't address it).
- * minimise "spurious" changes (e.g. whitespace shenanigans).
- * ensure all new files include an appropriate header comment block, containing
-   at least the license (Apache v2.0, preferably) and copyright information.
+ * Please make sure your PRs will merge cleanly - PRs that don't are unlikely to be accepted.
+ * For code contributions, follow [Alfresco's coding standards](https://wiki.alfresco.com/wiki/Coding_Standards).
+ * For documentation contributions, follow the general structure, language, and tone of the [existing docs](https://github.com/pmonks/alfresco-bulk-import/wiki).
+ * Keep PRs small and cohesive - if you have multiple contributions, please submit them as independent PRs.
+ * Reference issue #s if your PR has anything to do with an issue (even if it doesn't address it).
+ * Minimise "spurious" changes (e.g. whitespace shenanigans).
+ * Ensure all new files include a header comment block containing the [Apache License v2.0 and your copyright information](http://www.apache.org/licenses/LICENSE-2.0#apply).
+ * Add yourself to the [CONTRIBUTORS file](https://github.com/pmonks/alfresco-bulk-import/blob/master/CONTRIBUTORS.md)
+ * If necessary (e.g. due to 3rd party dependency licensing requirements), update the [NOTICE file](https://github.com/pmonks/alfresco-bulk-import/blob/master/NOTICE) with any new attribution notices
 
 ## Commit and PR Messages
 
@@ -80,7 +55,7 @@ To make review of PRs easier, please:
 * Use the present tense ("Add feature" not "Added feature")
 * Use the imperative mood ("Move button left..." not "Moves button left...")
 * Limit the first line to 72 characters or less
-* Consider starting the commit message with one or more applicable emoji:
+* Please start the commit message with one or more applicable emoji:
     * Frequently used:
         * :bug: `:bug:` when fixing a bug
         * :new: `:new:` when implementing an enhancement

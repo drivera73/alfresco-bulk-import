@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007-2015 Peter Monks.
+ * Copyright (C) 2007-2016 Peter Monks.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,6 +36,7 @@ import org.alfresco.extension.bulkimport.source.*;
 public final class SampleSource
     extends AbstractBulkImportSource
 {
+    @SuppressWarnings("unused")
     private final static Log log = LogFactory.getLog(SampleSource.class);
     
     private final static String IMPORT_SOURCE_NAME = "Sample";
