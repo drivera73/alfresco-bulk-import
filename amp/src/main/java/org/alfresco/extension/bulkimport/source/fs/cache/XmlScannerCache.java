@@ -119,6 +119,11 @@ public class XmlScannerCache implements ScannerCache
 			cacheName, count, DurationFormatUtils.formatDuration(duration, "HH:mm:ss.SSS"), rate, end ? " - completed" : ""));
 	}
 
+	protected void itemUnmarshalled(CacheItem item, boolean directoryMode)
+	{
+		// In case we want to fix anything...
+	}
+
 	private final boolean scan(final File baseDirectory, final String cacheName, final BulkImportCallback callback, final BulkImportSourceStatus importStatus, boolean directoryMode)
 		throws InterruptedException, IOException, JAXBException, XMLStreamException
 	{
@@ -166,6 +171,7 @@ public class XmlScannerCache implements ScannerCache
 								CacheItem cacheItem = xmlItem.getValue();
 								if (cacheItem != null)
 								{
+									itemUnmarshalled(cacheItem, directoryMode);
 									if (cacheItem.directory != directoryMode)
 									{
 										// This entry failed - expected a file, but got a directory
