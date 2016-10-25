@@ -4,30 +4,36 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- * 
+ *
  * This file is part of an unsupported extension to Alfresco.
- * 
+ *
  */
 
 package org.alfresco.extension.bulkimport.source.fs;
 
 
 import java.io.File;
+import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
+import org.apache.commons.collections.map.LRUMap;
+import org.apache.commons.lang3.concurrent.ConcurrentInitializer;
+import org.apache.commons.lang3.concurrent.ConcurrentUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.alfresco.service.ServiceRegistry;
@@ -51,7 +57,7 @@ abstract class AbstractMapBasedMetadataLoader
     implements MetadataLoader
 {
     private final static Log log = LogFactory.getLog(AbstractMapBasedMetadataLoader.class);
-    
+
     private final static String PROPERTY_NAME_TYPE            = "type";
     private final static String PROPERTY_NAME_ASPECTS         = "aspects";
     private final static String PROPERTY_NAME_NAMESPACE       = "namespace";
@@ -60,34 +66,62 @@ abstract class AbstractMapBasedMetadataLoader
     private final static String PROPERTY_NAME_SEPARATOR       = "separator";
 
     private final static String DEFAULT_SEPARATOR = ",";
-    
+
     protected final NamespaceService  namespaceService;
     protected final DictionaryService dictionaryService;
     protected final String            defaultSeparator;
     protected final String            metadataFileExtension;
-    
-    
-    
+
+    private final ConcurrentMap<QName, PropertyDefinition> propertyDefinitions = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, QName> qNames = new ConcurrentHashMap<>();
+    private final Map<File, Metadata> metadataCache;
+
+
+
     protected AbstractMapBasedMetadataLoader(final ServiceRegistry serviceRegistry, final String fileExtension)
     {
         this(serviceRegistry, DEFAULT_SEPARATOR, fileExtension);
     }
-    
-    
-    protected AbstractMapBasedMetadataLoader(final ServiceRegistry serviceRegistry, final String defaultSeparator, final String fileExtension)
+
+
+    @SuppressWarnings("unchecked")
+	protected AbstractMapBasedMetadataLoader(final ServiceRegistry serviceRegistry, final String defaultSeparator, final String fileExtension)
     {
         // PRECONDITIONS
         assert serviceRegistry  != null : "serviceRegistry must not be null";
         assert defaultSeparator != null : "defaultSeparator must not be null";
         assert fileExtension    != null : "fileExtension must not be null";
-        
+
         // Body
         this.namespaceService      = serviceRegistry.getNamespaceService();
         this.dictionaryService     = serviceRegistry.getDictionaryService();
         this.defaultSeparator      = defaultSeparator;
         this.metadataFileExtension = fileExtension;
+        this.metadataCache         = new LRUMap(100000); // TODO: is 100,000 enough?
     }
-    
+
+
+    protected final QName getQName(final String key) {
+        assert key != null : "key must not be null";
+    	return ConcurrentUtils.createIfAbsentUnchecked(qNames, key, new ConcurrentInitializer<QName>() {
+    		public QName get() {
+    			return QName.createQName(key, namespaceService);
+    		}
+    	});
+    }
+
+    protected final PropertyDefinition getPropertyDefinition(final QName name) {
+        assert name != null : "name must not be null";
+    	return ConcurrentUtils.createIfAbsentUnchecked(propertyDefinitions, name, new ConcurrentInitializer<PropertyDefinition>() {
+    		public PropertyDefinition get() {
+    	    	return dictionaryService.getProperty(name);
+    		}
+    	});
+    }
+
+    protected final PropertyDefinition getPropertyDefinition(String key) {
+    	return getPropertyDefinition(getQName(key));
+    }
 
     /**
      * @see org.alfresco.extension.bulkimport.source.fs.MetadataLoader#getMetadataFileExtension()
@@ -97,31 +131,65 @@ abstract class AbstractMapBasedMetadataLoader
     {
         return(metadataFileExtension);
     }
-    
-    
+
+
     /**
-     * Method that actually loads the properties from the file. 
+     * Method that actually loads the properties from the file.
      * @param metadataFile The file to load the properties from <i>(must not be null)</i>.
      * @return A new <code>Properties</code> object loaded from that file.
      */
     abstract protected Map<String,Serializable> loadMetadataFromFile(final File metadataFile);
 
-
     /**
      * @see org.alfresco.extension.bulkimport.source.fs.MetadataLoader#loadMetadata(java.io.File)
      */
     @Override
-    public final Metadata loadMetadata(final File metadataFile)
-    {
+    public final Metadata loadMetadata(File metadataFile) {
+    	if (metadataFile == null) return new Metadata();
+
+    	// First things first, try to canonicalize the file
+    	try
+    	{
+    		metadataFile = metadataFile.getCanonicalFile();
+    	}
+    	catch (IOException e)
+    	{
+    		// Do nothing...we don't care...
+            if (debug(log)) warn(log, "Failed to canonicalize file path [" + metadataFile.getPath() + "]", e);
+    	}
+    	finally
+    	{
+    		metadataFile = metadataFile.getAbsoluteFile();
+    	}
+
+    	Metadata ret = null;
+    	String path = metadataFile.getAbsolutePath();
+    	synchronized (metadataCache)
+    	{
+    		info(log, String.format("Fetching metadata for [%s]", path));
+    		ret = Metadata.class.cast(metadataCache.get(metadataFile));
+    		if (ret == null)
+    		{
+        		info(log, String.format("Loading metadata for [%s]", path));
+    			ret = loadMetadataImpl(metadataFile);
+    			metadataCache.put(metadataFile, ret);
+    		} else {
+        		info(log, String.format("Returning cached metadata for [%s]", path));
+    		}
+    	}
+    	return ret;
+    }
+
+    private final Metadata loadMetadataImpl(final File metadataFile) {
         Metadata result = new Metadata();
-        
+
         if (metadataFile != null)
         {
             if (metadataFile.canRead())
             {
                 Map<String,Serializable> metadataProperties = loadMetadataFromFile(metadataFile);
                 String                   separator          = defaultSeparator;
-                
+
                 if (metadataProperties != null)
                 {
                     // Process and remove the "special keys" first, before any metadata properties
@@ -130,31 +198,31 @@ abstract class AbstractMapBasedMetadataLoader
                         separator = (String)metadataProperties.get(PROPERTY_NAME_SEPARATOR);
                         metadataProperties.remove(PROPERTY_NAME_SEPARATOR);
                     }
-                    
+
                     if (metadataProperties.containsKey(PROPERTY_NAME_NAMESPACE))
                     {
                         result.setNamespace((String)metadataProperties.get(PROPERTY_NAME_NAMESPACE));
                         metadataProperties.remove(PROPERTY_NAME_NAMESPACE);
                     }
-                    
+
                     if (metadataProperties.containsKey(PROPERTY_NAME_TYPE))
                     {
                         result.setType((String)metadataProperties.get(PROPERTY_NAME_TYPE));
                         metadataProperties.remove(PROPERTY_NAME_TYPE);
                     }
-                    
+
                     if (metadataProperties.containsKey(PROPERTY_NAME_ASPECTS))
                     {
                         String[] aspectNames = ((String)metadataProperties.get(PROPERTY_NAME_ASPECTS)).split(separator);
-                        
+
                         for (final String aspectName : aspectNames)
                         {
                             result.addAspect(aspectName.trim());
                         }
-                        
+
                         metadataProperties.remove(PROPERTY_NAME_ASPECTS);
                     }
-                    
+
                     if (metadataProperties.containsKey(PROPERTY_NAME_PARENT_ASSOC))
                     {
                         result.setParentAssoc((String)metadataProperties.get(PROPERTY_NAME_PARENT_ASSOC));
@@ -171,9 +239,9 @@ abstract class AbstractMapBasedMetadataLoader
                     for (final String key : metadataProperties.keySet())
                     {
                         //####TODO: Issue #5 (https://github.com/pmonks/alfresco-bulk-import/issues/5): figure out how to handle properties of type cm:content - they need to be streamed in via a Writer
-                    	QName              name               = QName.createQName(key, namespaceService);
-                    	PropertyDefinition propertyDefinition = dictionaryService.getProperty(name);  // TODO: measure performance impact of this API call!!
-                    	
+                    	QName              name               = getQName(key);
+                    	PropertyDefinition propertyDefinition = getPropertyDefinition(name);
+
                     	if (propertyDefinition != null)
                     	{
                         	if (propertyDefinition.isMultiValued())
@@ -192,10 +260,10 @@ abstract class AbstractMapBasedMetadataLoader
                     	{
                     	    // Residual property
                             if (warn(log)) warn(log, "Property " + String.valueOf(name) + " doesn't exist in the Data Dictionary. Treating as a residual property.");
-                            
+
                             // Try to guess whether it's single or multi- valued
                             ArrayList<Serializable> values = new ArrayList<Serializable>(Arrays.asList(((String)metadataProperties.get(key)).split(separator)));
-                            
+
                             if (values.size() > 1)
                             {
                                 // Assume multi-valued
@@ -204,12 +272,12 @@ abstract class AbstractMapBasedMetadataLoader
                             else
                             {
                                 Serializable value = null;
-                                
+
                                 if (values.size() > 0)
                                 {
                                     value = metadataProperties.get(key);
                                 }
-                                    
+
                                 result.addProperty(key, value);
                             }
                     	}
@@ -221,14 +289,14 @@ abstract class AbstractMapBasedMetadataLoader
                 if (warn(log)) warn(log, "Metadata file '" + metadataFile.getAbsolutePath() + "' is not readable.");
             }
         }
-        
+
         return(result);
     }
-    
-    
+
+
     /**
      * This method performs mapping for multi-value property values.
-     * 
+     *
      * @param dataType The data type of the property <i>(must not be null)</i>.
      * @param values   The current values <i>(may be null)</i>.
      * @return The mapped values <i>(may be null)</i>.
@@ -247,15 +315,15 @@ abstract class AbstractMapBasedMetadataLoader
                 result.add(mapValue(dataType, value));
             }
         }
-        
+
         return(result);
     }
-    
+
 
     /**
      * This method performs mapping for property values.  Right now this means mapping from the value "NOW" to today's date/time
      * for d:date and d:datetime properties.
-     * 
+     *
      * @param dataType The data type of the property <i>(must not be null)</i>.
      * @param value    The current value <i>(may be null)</i>.
      * @return The mapped value <i>(may be null)</i>.
@@ -263,14 +331,14 @@ abstract class AbstractMapBasedMetadataLoader
     private final Serializable mapValue(final DataTypeDefinition dataType, final Serializable value)
     {
         Serializable result = value;
-        
+
         if ((DataTypeDefinition.DATE.equals(dataType.getName()) ||
              DataTypeDefinition.DATETIME.equals(dataType.getName())) &&
             "NOW".equals(value))
         {
             result = new Date();
         }
-        
+
         return(result);
     }
 

@@ -4,17 +4,17 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- * 
+ *
  * This file is part of an unsupported extension to Alfresco.
- * 
+ *
  */
 
 package org.alfresco.extension.bulkimport.impl;
@@ -69,19 +69,19 @@ public abstract class BulkImporterImpl   // Note: this class is only abstract be
     private final DictionaryService     dictionaryService;
     private final PermissionService     permissionService;
     private final AuthenticationService authenticationService;
-    
+
     private final WritableBulkImportStatus          importStatus;
     private final ThreadPauser                      pauser;
     private final BatchImporter                     batchImporter;
     private final int                               batchWeight;
     private final List<BulkImportCompletionHandler> completionHandlers;
-    
+
     private ApplicationContext appContext;
-    
+
     // Transient state while an import is in progress
     private Thread scannerThread;
 
-    
+
     public BulkImporterImpl(final ServiceRegistry                   serviceRegistry,
                             final WritableBulkImportStatus          importStatus,
                             final ThreadPauser                      pauser,
@@ -101,16 +101,16 @@ public abstract class BulkImporterImpl   // Note: this class is only abstract be
         this.dictionaryService     = serviceRegistry.getDictionaryService();
         this.permissionService     = serviceRegistry.getPermissionService();
         this.authenticationService = serviceRegistry.getAuthenticationService();
-        
+
         this.importStatus  = importStatus;
         this.pauser        = pauser;
         this.batchImporter = batchImporter;
         this.batchWeight   = batchWeight <= 0 ? DEFAULT_BATCH_WEIGHT : batchWeight;
-        
+
         this.completionHandlers = completionHandlers;
     }
-    
-    
+
+
     /**
      * @see org.springframework.context.ApplicationContextAware#setApplicationContext(org.springframework.context.ApplicationContext)
      */
@@ -120,12 +120,12 @@ public abstract class BulkImporterImpl   // Note: this class is only abstract be
     {
         // PRECONDITIONS
         assert appContext != null : "appContext must not be null.";
-        
+
         // Body
         this.appContext = appContext;
     }
-    
-    
+
+
     /**
      * @see org.alfresco.extension.bulkimport.BulkImporter#getBulkImportSources()
      */
@@ -145,11 +145,11 @@ public abstract class BulkImporterImpl   // Note: this class is only abstract be
                       final NodeRef                   target)
     {
         BulkImportSource source = appContext.getBean(bulkImportSourceBeanId, BulkImportSource.class);
-        
+
         start(source, parameters, target);
     }
-    
-    
+
+
     /**
      * @see org.alfresco.extension.bulkimport.BulkImporter#start(org.alfresco.extension.bulkimport.source.BulkImportSource, java.util.Map, org.alfresco.service.cmr.repository.NodeRef)
      */
@@ -163,22 +163,22 @@ public abstract class BulkImporterImpl   // Note: this class is only abstract be
         {
             throw new IllegalArgumentException("Bulk import source bean must not be null.");
         }
-        
+
         if (parameters == null)
         {
             throw new IllegalArgumentException("Bulk import parameters must not be null.");
         }
-        
+
         if (target == null)
         {
             throw new IllegalArgumentException("Bulk import target nodeRef must not be null.");
         }
-        
+
         if (!nodeService.exists(target))
         {
             throw new IllegalArgumentException("Bulk import target nodeRef " + String.valueOf(target) + " does not exist.");
         }
-        
+
         if (!AccessStatus.ALLOWED.equals(permissionService.hasPermission(target, PermissionService.ADD_CHILDREN)))
         {
             throw new IllegalArgumentException("User " + authenticationService.getCurrentUserName() +
@@ -189,14 +189,17 @@ public abstract class BulkImporterImpl   // Note: this class is only abstract be
         {
             throw new IllegalArgumentException("Target '" + String.valueOf(target) + "' is not a space.");
         }
-        
+
         if (importStatus.inProgress())
         {
             throw new IllegalStateException("An import is already in progress.");
         }
-            
+
         // Body
         if (debug(log)) debug(log, source.getName() + " bulk import started with parameters " + Arrays.toString(parameters.entrySet().toArray()) + ".");
+
+        // Make sure all counters are cleared
+        importStatus.resetCounters();
 
         // Create the threads used by the bulk import tool
         scannerThread = new Thread(new Scanner(serviceRegistry,
@@ -210,7 +213,7 @@ public abstract class BulkImporterImpl   // Note: this class is only abstract be
                                                createThreadPool(),
                                                batchImporter,
                                                completionHandlers));
-        
+
         scannerThread.setName(SCANNER_THREAD_NAME);
         scannerThread.setDaemon(true);
         scannerThread.start();
@@ -268,11 +271,11 @@ public abstract class BulkImporterImpl   // Note: this class is only abstract be
         if (importStatus.inProgress())
         {
             if (info(log)) info(log, "Stop requested.");
-            
+
             // Note: this must be called first, as the various threads look for this status to determine if their
             //       interruption was expected or not.
             importStatus.stopRequested();
-            
+
             if (scannerThread != null)
             {
                 scannerThread.interrupt();  // This indirectly whacks the entire import thread pool too
@@ -306,11 +309,11 @@ public abstract class BulkImporterImpl   // Note: this class is only abstract be
      * 1. We need to be able to stop an entire import (including all of the worker threads)
      * 2. Java's ExecutorService framework only offers one way to do this: shutting down the entire ExecutorService
      * 3. Once shutdown, a Java ExecutorService can't be restarted / reused
-     * 
+     *
      * Ergo this stuff...  *sigh*
-     * 
+     *
      * @return A new BulkImportThreadPoolExecutor instance <i>(will not be null, assuming Spring is configured correctly)</i>.
      */
     protected abstract BulkImportThreadPoolExecutor createThreadPool();
-    
+
 }

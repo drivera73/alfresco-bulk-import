@@ -4,17 +4,17 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- * 
+ *
  * This file is part of an unsupported extension to Alfresco.
- * 
+ *
  */
 
 package org.alfresco.extension.bulkimport.source;
@@ -38,19 +38,21 @@ public abstract class AbstractBulkImportItem<T extends BulkImportItemVersion>
     protected final String          name;
     protected final boolean         isDirectory;
     protected final String          relativePathOfParent;
+    protected final String          altRelativePathOfParent;
     protected final NavigableSet<T> versions;
-    
-    
+
+
     protected AbstractBulkImportItem(final String          name,
                                      final boolean         isDirectory,
                                      final String          relativePathOfParent,
+                                     final String          altRelativePathOfParent,
                                      final NavigableSet<T> versions)
     {
         if (name == null || name.trim().length() == 0)
         {
             throw new IllegalArgumentException("name cannot be null, empty or blank.");
         }
-        
+
         if (versions == null || versions.size() <= 0)
         {
             throw new IllegalArgumentException("versions cannot be null or empty.");
@@ -59,10 +61,11 @@ public abstract class AbstractBulkImportItem<T extends BulkImportItemVersion>
         this.name                 = name;
         this.isDirectory          = isDirectory;
         this.relativePathOfParent = relativePathOfParent;
+        this.altRelativePathOfParent = altRelativePathOfParent;
         this.versions             = versions;
     }
-    
-    
+
+
     /**
      * @see org.alfresco.extension.bulkimport.source.BulkImportItem#getName()
      */
@@ -81,7 +84,7 @@ public abstract class AbstractBulkImportItem<T extends BulkImportItemVersion>
     {
         return(ContentModel.ASSOC_CONTAINS.toString());
     }
-    
+
 
     /**
      * @see org.alfresco.extension.bulkimport.source.BulkImportItem#getNamespace()
@@ -91,7 +94,7 @@ public abstract class AbstractBulkImportItem<T extends BulkImportItemVersion>
     {
         return(NamespaceService.CONTENT_MODEL_1_0_URI);
     }
-    
+
 
     /**
      * @see org.alfresco.extension.bulkimport.source.BulkImportItem#isDirectory()
@@ -101,8 +104,8 @@ public abstract class AbstractBulkImportItem<T extends BulkImportItemVersion>
     {
         return(isDirectory);
     }
-    
-    
+
+
     /**
      * @see org.alfresco.extension.bulkimport.source.BulkImportItem#getRelativePathOfParent()
      */
@@ -110,6 +113,16 @@ public abstract class AbstractBulkImportItem<T extends BulkImportItemVersion>
     public String getRelativePathOfParent()
     {
         return(relativePathOfParent);
+    }
+
+
+    /**
+     * @see org.alfresco.extension.bulkimport.source.BulkImportItem#getAltRelativePathOfParent()
+     */
+    @Override
+    public String getAltRelativePathOfParent()
+    {
+        return(altRelativePathOfParent);
     }
 
 
@@ -122,7 +135,7 @@ public abstract class AbstractBulkImportItem<T extends BulkImportItemVersion>
         return(versions);
     }
 
-    
+
     /**
      * @see org.alfresco.extension.bulkimport.source.BulkImportItem#sizeInBytes()
      */
@@ -142,10 +155,10 @@ public abstract class AbstractBulkImportItem<T extends BulkImportItemVersion>
                 }
             }
         }
-        
+
         return(result);
     }
-    
+
 
     /**
      * @see org.alfresco.extension.bulkimport.source.BulkImportItem#numberOfVersions()
@@ -154,15 +167,15 @@ public abstract class AbstractBulkImportItem<T extends BulkImportItemVersion>
     public int numberOfVersions()
     {
         int result = 0;
-        
+
         if (getVersions() != null)
         {
             result = getVersions().size();
         }
-        
+
         return(result);
     }
-    
+
 
     /**
      * @see org.alfresco.extension.bulkimport.source.BulkImportItem#numberOfAspects()
@@ -183,7 +196,7 @@ public abstract class AbstractBulkImportItem<T extends BulkImportItemVersion>
                 }
             }
         }
-        
+
         return(result);
     }
 
@@ -206,11 +219,11 @@ public abstract class AbstractBulkImportItem<T extends BulkImportItemVersion>
                 }
             }
         }
-        
+
         return(result);
     }
 
-    
+
     /**
      * @see java.lang.Object#toString()
      */
@@ -220,7 +233,7 @@ public abstract class AbstractBulkImportItem<T extends BulkImportItemVersion>
         final StringBuilder   result       = new StringBuilder();
         final int             versionCount = numberOfVersions();
         final NavigableSet<T> versions     = getVersions();
-        
+
         result.append(getName() + " (" + versionCount + " version" + (versionCount != 1 ? "s)" : ")") + ":");
 
         if (versions != null)
@@ -231,7 +244,7 @@ public abstract class AbstractBulkImportItem<T extends BulkImportItemVersion>
                 result.append(String.valueOf(version));
             }
         }
-        
+
         return(result.toString());
     }
 }
