@@ -62,7 +62,9 @@ public class XmlScannerCacheTest
 			xml.writeStartElement("scan");
 			xml.flush();
 
+			final AtomicLong total = new AtomicLong(0);
 			final AtomicLong expected = new AtomicLong(0);
+			final AtomicLong different = new AtomicLong(0);
 			final AtomicLong actual = new AtomicLong(0);
 
 			XmlScannerCache cache = new XmlScannerCache(null, null, null)
@@ -70,7 +72,9 @@ public class XmlScannerCacheTest
 				@Override
 				protected void itemUnmarshalled(CacheItem item, boolean directoryMode)
 				{
-					expected.incrementAndGet();
+					// Only count what needs counting...
+					total.incrementAndGet();
+					(directoryMode == item.directory ? expected : different).incrementAndGet();
 				}
 
 				@Override
@@ -97,6 +101,7 @@ public class XmlScannerCacheTest
 
 			runScan(cache, expectedBaseDirectory, expectedCallback, status);
 			Assert.assertEquals(expected.get(), actual.get());
+			Assert.assertEquals(total.get(), expected.get() + different.get());
 			xml.writeEndDocument();
 			xml.flush();
 		}
