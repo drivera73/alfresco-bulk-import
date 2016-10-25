@@ -110,12 +110,13 @@ public class XmlScannerCache implements ScannerCache
 		callback.submit(cacheItem.generate(baseDirectory, serviceRegistry, configuredContentStore, metadataLoader));
 	}
 
-	private void showProgress(long start, long count, String cacheName)
+	private void showProgress(long start, long count, String cacheName, boolean end)
 	{
 		if ((count % 1000) != 0) return;
 		final long duration = System.currentTimeMillis() - start;
 		double rate = (1000.0 * count) / (1.0 * duration);
-		log.warn(String.format("XML Scanner Cache (%s): %d processed in %s (%.3f/sec)", cacheName, count, DurationFormatUtils.formatDuration(duration, "HH:mm:ss.SSS"), rate));
+		log.warn(String.format("XML Scanner Cache (%s): %d processed in %s (%.3f/sec%s)",
+			cacheName, count, DurationFormatUtils.formatDuration(duration, "HH:mm:ss.SSS"), rate, end ? " - completed" : ""));
 	}
 
 	private final boolean scan(final File baseDirectory, final String cacheName, final BulkImportCallback callback, final BulkImportSourceStatus importStatus, boolean directoryMode)
@@ -172,7 +173,7 @@ public class XmlScannerCache implements ScannerCache
 									}
 									// Ok...so...generate and submit the item...
 									process(baseDirectory, cacheItem, callback);
-									showProgress(start, ++count, cacheName);
+									showProgress(start, ++count, cacheName, false);
 									ok = true;
 									importStatus.incrementSourceCounter(counterName);
 								}
@@ -193,7 +194,7 @@ public class XmlScannerCache implements ScannerCache
 				}
 				finally
 				{
-					showProgress(start, count, cacheName);
+					showProgress(start, count, cacheName, true);
 				}
 
 				// We return a value of TRUE if and only if we read at least one entry...if we did,
