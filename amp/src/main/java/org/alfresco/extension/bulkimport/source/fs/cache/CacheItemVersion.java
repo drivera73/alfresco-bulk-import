@@ -24,16 +24,16 @@ import org.alfresco.service.ServiceRegistry;
 )
 public class CacheItemVersion
 {
-	@XmlElement(required = true)
+	@XmlElement(required = false)
 	protected String number;
 
 	@XmlTransient
 	protected BigDecimal numberBd;
 
-	@XmlElement(required = true)
+	@XmlElement(required = false)
 	protected String content;
 
-	@XmlElement(required = true)
+	@XmlElement(required = false)
 	protected String metadata;
 
 	protected void afterUnmarshal(Unmarshaller unmarshaller, Object parent)
@@ -92,8 +92,8 @@ public class CacheItemVersion
 
 	public FilesystemBulkImportItemVersion generate(File baseDir, ServiceRegistry serviceRegistry, ContentStore contentStore, MetadataLoader metadataLoader)
 	{
-		final File content = new File(baseDir, this.content);
-		final File metadata = new File(baseDir, this.metadata);
+		final File content = (this.content != null ? new File(baseDir, this.content) : null);
+		final File metadata = (this.metadata != null ? new File(baseDir, this.metadata) : null);
 		return new FilesystemBulkImportItemVersion(serviceRegistry, contentStore, metadataLoader, numberBd, content, metadata);
 	}
 
