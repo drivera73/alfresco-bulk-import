@@ -13,6 +13,7 @@ import org.alfresco.extension.bulkimport.BulkImportCallback;
 import org.alfresco.extension.bulkimport.impl.BulkImportStatusImpl;
 import org.alfresco.extension.bulkimport.source.BulkImportItem;
 import org.alfresco.extension.bulkimport.source.BulkImportSourceStatus;
+import org.alfresco.extension.bulkimport.source.fs.DirectoryAnalyser;
 import org.apache.commons.io.output.NullOutputStream;
 import org.junit.Assert;
 import org.junit.Test;
@@ -104,6 +105,10 @@ public class XmlScannerCacheTest
 			Assert.assertEquals(total.get(), expected.get() + different.get());
 			xml.writeEndDocument();
 			xml.flush();
+
+			String counterName = (expectedIsDirectory ? DirectoryAnalyser.COUNTER_NAME_DIRECTORIES_SCANNED : DirectoryAnalyser.COUNTER_NAME_FILES_SCANNED);
+			final long counter = status.getSourceCounter(counterName);
+			Assert.assertEquals(expected.get(), counter);
 		}
 	}
 

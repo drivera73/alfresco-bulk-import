@@ -409,9 +409,14 @@ public class BulkImportStatusImpl
         incrementTargetCounter(TARGET_COUNTER_ASPECTS_ASSOCIATED,           batch.numberOfAspects());
     }
 
+    private Counter ensureExists(ConcurrentMap<String, Counter> map, String counterName, long initial)
+    {
+    	return map.putIfAbsent(counterName, new Counter(counterName, initial));
+    }
+
     private Counter ensureExists(ConcurrentMap<String, Counter> map, String counterName)
     {
-    	return map.putIfAbsent(counterName, new Counter(counterName));
+    	return ensureExists(map, counterName, 0);
     }
 
     private void preregisterCounters(ConcurrentMap<String, Counter> map, String[] counterNames)
@@ -439,7 +444,7 @@ public class BulkImportStatusImpl
 
     private void incrementCounter(ConcurrentMap<String, Counter> map, String counterName, long amount)
     {
-    	final Counter counter = ensureExists(map, counterName);
+    	final Counter counter = ensureExists(map, counterName, amount);
     	if (counter != null)
     	{
     		counter.increment(amount);
