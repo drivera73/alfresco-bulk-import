@@ -110,7 +110,7 @@ public final class DirectoryAnalyser
      * @return An <code>AnalysedDirectory</code> object <i>(will not be null)</i>.
      * @throws InterruptedException If the thread executing the method is interrupted.
      */
-    public Pair<List<FilesystemBulkImportItem>, List<FilesystemBulkImportItem>> analyseDirectory(final File sourceDirectory, final File directory)
+    public Pair<List<FilesystemBulkImportItem>, List<FilesystemBulkImportItem>> analyseDirectory(final File sourceDirectory, final File directory, final boolean submitFiles)
         throws InterruptedException
     {
         // PRECONDITIONS
@@ -161,7 +161,7 @@ public final class DirectoryAnalyser
 
         // Build up the list of items from the directory listing
         start = System.nanoTime();
-        result = analyseDirectory(sourceRelativeParentDirectory, newSourceRelativeParentDirectory, directoryListing);
+        result = analyseDirectory(sourceRelativeParentDirectory, newSourceRelativeParentDirectory, directoryListing, submitFiles);
         end = System.nanoTime();
         if (trace(log)) trace(log, "Convert directory listing to set of filesystem import items took: " + (float)(end - start) / (1000 * 1000 * 1000) + "s.");
 
@@ -203,7 +203,7 @@ public final class DirectoryAnalyser
     	return value.toString();
     }
 
-    private Pair<List<FilesystemBulkImportItem>, List<FilesystemBulkImportItem>> analyseDirectory(final String sourceRelativeParentDirectory, final String altSourceRelativeParentDirectory, final File[] directoryListing)
+    private Pair<List<FilesystemBulkImportItem>, List<FilesystemBulkImportItem>> analyseDirectory(final String sourceRelativeParentDirectory, final String altSourceRelativeParentDirectory, final File[] directoryListing, final boolean countFiles)
         throws InterruptedException
     {
         Pair<List<FilesystemBulkImportItem>, List<FilesystemBulkImportItem>> result = null;
@@ -211,7 +211,7 @@ public final class DirectoryAnalyser
         if (directoryListing != null)
         {
             // This needs some Clojure, desperately...
-            Map<String, SortedMap<BigDecimal, Pair<File, File>>> categorisedFiles = categoriseFiles(directoryListing);
+            Map<String, SortedMap<BigDecimal, Pair<File, File>>> categorisedFiles = categoriseFiles(directoryListing, countFiles);
 
             if (debug(log)) debug(log, "Categorised files: " + String.valueOf(categorisedFiles));
 
@@ -222,7 +222,7 @@ public final class DirectoryAnalyser
     }
 
 
-    private Map<String, SortedMap<BigDecimal, Pair<File, File>>> categoriseFiles(final File[] directoryListing)
+    private Map<String, SortedMap<BigDecimal, Pair<File, File>>> categoriseFiles(final File[] directoryListing, final boolean countFiles)
         throws InterruptedException
     {
         Map<String, SortedMap<BigDecimal, Pair<File, File>>> result = null;
@@ -235,7 +235,7 @@ public final class DirectoryAnalyser
             {
                 if (importStatus.isStopping() || Thread.currentThread().isInterrupted()) throw new InterruptedException(Thread.currentThread().getName() + " was interrupted. Terminating early.");
 
-                categoriseFile(result, file);
+                categoriseFile(result, file, countFiles);
             }
         }
 
@@ -247,7 +247,7 @@ public final class DirectoryAnalyser
      * This method does the hard work of figuring out where the file belongs (which parent item, and where in that item's
      * version history).
      */
-    private void categoriseFile(final Map<String, SortedMap<BigDecimal, Pair<File, File>>> categorisedFiles, final File file)
+    private void categoriseFile(final Map<String, SortedMap<BigDecimal, Pair<File, File>>> categorisedFiles, final File file, boolean countFiles)
     {
         if (file != null)
         {
@@ -287,11 +287,12 @@ public final class DirectoryAnalyser
 
                 versions.put(versionNumber, version);
 
-                if (file.isDirectory())
+                if (file.isDirectory() && !countFiles)
                 {
                     importStatus.incrementSourceCounter(COUNTER_NAME_DIRECTORIES_SCANNED);
                 }
                 else
+                if (!file.isDirectory() && countFiles)
                 {
                     importStatus.incrementSourceCounter(COUNTER_NAME_FILES_SCANNED);
                 }

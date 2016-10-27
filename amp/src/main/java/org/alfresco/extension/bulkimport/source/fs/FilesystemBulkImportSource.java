@@ -244,7 +244,7 @@ public final class FilesystemBulkImportSource
 
         status.setCurrentlyScanning(sourceDirectory.getAbsolutePath());
 
-        final Pair<List<FilesystemBulkImportItem>, List<FilesystemBulkImportItem>> analysedDirectory = directoryAnalyser.analyseDirectory(sourceDirectory, directory);
+        final Pair<List<FilesystemBulkImportItem>, List<FilesystemBulkImportItem>> analysedDirectory = directoryAnalyser.analyseDirectory(sourceDirectory, directory, submitFiles);
 
         if (analysedDirectory != null)
         {
