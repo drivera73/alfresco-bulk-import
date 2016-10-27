@@ -32,13 +32,15 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
+import org.apache.chemistry.opencmis.commons.PropertyIds;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import org.alfresco.repo.content.ContentStore;
 import org.alfresco.service.ServiceRegistry;
 import org.alfresco.util.Pair;
-
+import org.alfresco.extension.bulkimport.source.BulkImportItem;
+import org.alfresco.extension.bulkimport.source.BulkImportItemVersion;
 import org.alfresco.extension.bulkimport.source.BulkImportSourceStatus;
 import org.alfresco.extension.bulkimport.source.fs.MetadataLoader.Metadata;
 
@@ -169,7 +171,8 @@ public final class DirectoryAnalyser
         return(result);
     }
 
-    private String getNameProperty(String metadataFile) {
+    private String getNameProperty(String metadataFile)
+    {
         String rv = null;
 
         Metadata p = metadataLoader.loadMetadata(new File(metadataFile));
@@ -180,7 +183,25 @@ public final class DirectoryAnalyser
         }
 
         return rv;
-     }
+    }
+
+    private String getNameProperty(final BulkImportItem<?> item, final String defaultName)
+    {
+    	if (item == null) return defaultName;
+    	NavigableSet<? extends BulkImportItemVersion> versions = item.getVersions();
+    	if (versions == null || versions.isEmpty()) return defaultName;
+    	return getNameProperty(item.getVersions().last(), defaultName);
+    }
+
+    private String getNameProperty(final BulkImportItemVersion version, final String defaultName)
+    {
+    	if (version == null) return defaultName;
+    	Map<String, Serializable> metadata = version.getMetadata();
+    	if (metadata == null || metadata.isEmpty()) return defaultName;
+    	Serializable value = metadata.get("cm:name");
+    	if (value == null) return defaultName;
+    	return value.toString();
+    }
 
     private Pair<List<FilesystemBulkImportItem>, List<FilesystemBulkImportItem>> analyseDirectory(final String sourceRelativeParentDirectory, final String altSourceRelativeParentDirectory, final File[] directoryListing)
         throws InterruptedException
@@ -305,7 +326,7 @@ public final class DirectoryAnalyser
                 final SortedMap<BigDecimal,Pair<File,File>>         itemVersions = categorisedFiles.get(parentName);
                 final NavigableSet<FilesystemBulkImportItemVersion> versions     = constructImportItemVersions(itemVersions);
                 final boolean                                       isDirectory  = versions.last().isDirectory();
-                final FilesystemBulkImportItem                      item         = new FilesystemBulkImportItem(parentName,
+                final FilesystemBulkImportItem                      item         = new FilesystemBulkImportItem(getNameProperty(versions.last(), parentName),
                                                                                                                 isDirectory,
                                                                                                                 sourceRelativeParentDirectory,
                                                                                                                 altSourceRelativeParentDirectory,
