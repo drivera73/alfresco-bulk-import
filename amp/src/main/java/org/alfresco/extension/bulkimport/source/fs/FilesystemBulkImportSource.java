@@ -29,6 +29,7 @@ import java.io.FileNotFoundException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.alfresco.extension.bulkimport.BulkImportCallback;
 import org.alfresco.extension.bulkimport.source.AbstractBulkImportSource;
@@ -78,6 +79,7 @@ public final class FilesystemBulkImportSource
     private final ContentStore       configuredContentStore;
     private final List<ImportFilter> importFilters;
     private final ScannerCache       scannerCache;
+    private final AtomicLong         scannerPass;
 
     private File sourceDirectory = null;
 
@@ -98,6 +100,7 @@ public final class FilesystemBulkImportSource
         this.configuredContentStore = configuredContentStore;
         this.importFilters          = importFilters;
         this.scannerCache           = (scannerCache != null ? scannerCache : NO_CACHE);
+        this.scannerPass            = new AtomicLong(0);
     }
 
 
@@ -194,7 +197,7 @@ public final class FilesystemBulkImportSource
     	{
         	try
         	{
-            	scanDirectory(status, callback, sourceDirectory, sourceDirectory, false);
+            	scanDirectory(status, callback, sourceDirectory, sourceDirectory, false, this.scannerPass.getAndIncrement());
         	}
         	finally
         	{
@@ -215,7 +218,7 @@ public final class FilesystemBulkImportSource
     	{
 	    	try
 	    	{
-	    		scanDirectory(status, callback, sourceDirectory, sourceDirectory, true);
+	    		scanDirectory(status, callback, sourceDirectory, sourceDirectory, true, this.scannerPass.getAndIncrement());
 	    	}
 	    	finally
 	    	{
@@ -232,7 +235,8 @@ public final class FilesystemBulkImportSource
                                final BulkImportCallback     callback,
                                final File                   sourceDirectory,
                                final File                   directory,
-                               final boolean                submitFiles)
+                               final boolean                submitFiles,
+                               final long                   scannerPass)
         throws InterruptedException
     {
         // PRECONDITIONS
@@ -244,7 +248,7 @@ public final class FilesystemBulkImportSource
 
         status.setCurrentlyScanning(sourceDirectory.getAbsolutePath());
 
-        final Pair<List<FilesystemBulkImportItem>, List<FilesystemBulkImportItem>> analysedDirectory = directoryAnalyser.analyseDirectory(sourceDirectory, directory, submitFiles);
+        final Pair<List<FilesystemBulkImportItem>, List<FilesystemBulkImportItem>> analysedDirectory = directoryAnalyser.analyseDirectory(sourceDirectory, directory, submitFiles, scannerPass);
 
         if (analysedDirectory != null)
         {
@@ -298,7 +302,8 @@ public final class FilesystemBulkImportSource
                                           callback,
                                           sourceDirectory,
                                           lastVersion.getContentFile(),
-                                          submitFiles);
+                                          submitFiles,
+                                          scannerPass);
                         }
                         else
                         {
