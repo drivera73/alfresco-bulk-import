@@ -181,7 +181,11 @@ public class XmlScannerCache implements ScannerCache
 									process(baseDirectory, cacheItem, callback);
 									showProgress(start, ++count, cacheName, false);
 									ok = true;
-									importStatus.incrementSourceCounter(counterName);
+									for (CacheItemVersion v : cacheItem.versions)
+									{
+										if (v.content != null) importStatus.incrementSourceCounter(counterName);
+										if (v.metadata != null) importStatus.incrementSourceCounter(DirectoryAnalyser.COUNTER_NAME_METADATA_SCANNED);
+									}
 								}
 							}
 						}

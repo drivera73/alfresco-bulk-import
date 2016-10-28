@@ -186,6 +186,8 @@ public final class Scanner
             // Maximise level of concurrency, since there's no longer any risk of out-of-order batches
             source.scanFiles(importStatus, this);
 
+            importStatus.freezeSourceCounters();
+
             if (debug(log)) debug(log, "File scan complete in " + getHumanReadableDuration(importStatus.getDurationInNs()) + ".");
 
             importStatus.scanningComplete();
@@ -196,6 +198,8 @@ public final class Scanner
 
             submitCurrentBatch();  // Submit whatever is left in the final (partial) batch...
             awaitCompletion();
+
+            importStatus.freezeTargetCounters();
 
             if (debug(log)) debug(log, "Import complete" + (multiThreadedImport ? ", thread pool shutdown" : "") + ".");
         }

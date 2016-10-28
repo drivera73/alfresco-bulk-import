@@ -32,7 +32,6 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
-import org.apache.chemistry.opencmis.commons.PropertyIds;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -62,10 +61,12 @@ public final class DirectoryAnalyser
 
     // Status counters
     public final static String COUNTER_NAME_FILES_SCANNED       = "Files scanned";
+    public final static String COUNTER_NAME_METADATA_SCANNED       = "Metadata files scanned";
     public final static String COUNTER_NAME_DIRECTORIES_SCANNED = "Directories scanned";
     public final static String COUNTER_NAME_UNREADABLE_ENTRIES  = "Unreadable entries";
 
     private final static String[] COUNTER_NAMES = { COUNTER_NAME_FILES_SCANNED,
+                                                    COUNTER_NAME_METADATA_SCANNED,
                                                     COUNTER_NAME_DIRECTORIES_SCANNED,
                                                     COUNTER_NAME_UNREADABLE_ENTRIES };
 
@@ -185,7 +186,7 @@ public final class DirectoryAnalyser
         return rv;
     }
 
-    private String getNameProperty(final BulkImportItem<?> item, final String defaultName)
+    public static String getNameProperty(final BulkImportItem<?> item, final String defaultName)
     {
     	if (item == null) return defaultName;
     	NavigableSet<? extends BulkImportItemVersion> versions = item.getVersions();
@@ -193,7 +194,7 @@ public final class DirectoryAnalyser
     	return getNameProperty(item.getVersions().last(), defaultName);
     }
 
-    private String getNameProperty(final BulkImportItemVersion version, final String defaultName)
+    public static String getNameProperty(final BulkImportItemVersion version, final String defaultName)
     {
     	if (version == null) return defaultName;
     	Map<String, Serializable> metadata = version.getMetadata();
@@ -286,10 +287,14 @@ public final class DirectoryAnalyser
                 }
 
                 versions.put(versionNumber, version);
-
-                if (file.isDirectory() && !countFiles)
-                {
+            	if (file.isDirectory() && !countFiles)
+            	{
                     importStatus.incrementSourceCounter(COUNTER_NAME_DIRECTORIES_SCANNED);
+            	}
+            	else
+                if (!file.isDirectory() && isMetadata)
+                {
+                    importStatus.incrementSourceCounter(COUNTER_NAME_METADATA_SCANNED);
                 }
                 else
                 if (!file.isDirectory() && countFiles)

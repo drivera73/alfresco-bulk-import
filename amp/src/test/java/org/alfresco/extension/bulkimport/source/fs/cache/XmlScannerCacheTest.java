@@ -75,14 +75,20 @@ public class XmlScannerCacheTest
 				{
 					// Only count what needs counting...
 					total.incrementAndGet();
-					(directoryMode == item.directory ? expected : different).incrementAndGet();
+					for (CacheItemVersion v : item.versions)
+					{
+						if (v.content != null) (directoryMode == item.directory ? expected : different).addAndGet(item.versions.size());
+					}
 				}
 
 				@Override
 				protected void process(File baseDirectory, CacheItem cacheItem, BulkImportCallback callback)
 					throws InterruptedException
 				{
-					actual.incrementAndGet();
+					for (CacheItemVersion v : cacheItem.versions)
+					{
+						if (v.content != null) actual.incrementAndGet();
+					}
 					Assert.assertNotNull(baseDirectory);
 					Assert.assertEquals(expectedBaseDirectory, baseDirectory);
 					Assert.assertSame(expectedCallback, callback);

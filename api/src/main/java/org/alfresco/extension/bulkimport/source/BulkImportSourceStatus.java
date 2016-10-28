@@ -64,4 +64,6 @@ public interface BulkImportSourceStatus
      * @param counterName The name of the counter to freeze <i>(must not be null)</i>
      */
     void freezeSourceCounter(String counterName);
+
+    void freezeSourceCounters();
 }

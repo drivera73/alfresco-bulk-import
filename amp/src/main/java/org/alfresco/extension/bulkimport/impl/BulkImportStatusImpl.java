@@ -467,6 +467,26 @@ public class BulkImportStatusImpl
     	incrementCounter(targetCounters, counterName, value);
     }
 
+    private void freezeCounters(ConcurrentMap<String, Counter> map)
+    {
+    	for (Counter c : map.values())
+    	{
+    		c.freeze();
+    	}
+    }
+
+    @Override
+    public void freezeSourceCounters()
+    {
+    	freezeCounters(sourceCounters);
+    }
+
+    @Override
+    public void freezeTargetCounters()
+    {
+    	freezeCounters(targetCounters);
+    }
+
     private void freezeCounter(ConcurrentMap<String, Counter> map, String counterName)
     {
     	final Counter counter = ensureExists(map, counterName);

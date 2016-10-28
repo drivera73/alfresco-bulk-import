@@ -54,4 +54,5 @@ public interface WritableBulkImportStatus
     void incrementTargetCounter(String counterName);
     void incrementTargetCounter(String counterName, long value);
     void freezeTargetCounter(String counterName);
+    void freezeTargetCounters();
 }
