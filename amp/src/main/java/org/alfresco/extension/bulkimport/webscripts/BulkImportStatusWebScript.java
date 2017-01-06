@@ -55,9 +55,6 @@ public class BulkImportStatusWebScript
     }
     
 
-    /**
-     * @see org.alfresco.web.scripts.DeclarativeWebScript#executeImpl(org.alfresco.web.scripts.WebScriptRequest, org.alfresco.web.scripts.Status, org.alfresco.web.scripts.Cache)
-     */
     @Override
     protected Map<String, Object> executeImpl(final WebScriptRequest request,
                                               final Status           status,

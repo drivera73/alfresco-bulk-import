@@ -59,8 +59,10 @@ public final class Scanner
 {
     private final static Log log = LogFactory.getLog(Scanner.class);
 
+    /*
     private final static long     SLEEP_TIME = 10L;
     private final static TimeUnit SLEEP_TIME_UNITS = TimeUnit.MINUTES;
+    */
 
     private final static String PARAMETER_REPLACE_EXISTING = "replaceExisting";
     private final static String PARAMETER_DRY_RUN          = "dryRun";

@@ -1,0 +1,12 @@
+<webscript>
+  <shortname>Bulk Export</shortname>
+  <description>Export data as Bulk Import format</description>
+  <url>/bulk/export</url>
+  <format default="html"/>
+  <authentication>admin</authentication>
+  <transaction allow="readonly">required</transaction>
+  <family>Bulk Export</family>
+  <cache>
+    <never>true</never>
+  </cache>
+</webscript>

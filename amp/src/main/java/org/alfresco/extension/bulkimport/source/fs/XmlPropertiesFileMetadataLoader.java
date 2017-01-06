@@ -84,7 +84,8 @@ import static org.alfresco.extension.bulkimport.source.fs.FilesystemSourceUtils.
  * </ul>
  *
  * @author Peter Monks (pmonks@gmail.com)
- * @see MetadataLoader, AbstractMapBasedMetadataLoader
+ * @see MetadataLoader
+ * @see AbstractMapBasedMetadataLoader
  */
 public final class XmlPropertiesFileMetadataLoader
     extends AbstractMapBasedMetadataLoader

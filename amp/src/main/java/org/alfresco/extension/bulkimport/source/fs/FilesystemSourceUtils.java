@@ -199,7 +199,7 @@ public final class FilesystemSourceUtils
     
     
     /**
-     * Attempt to guess the encoding of a text file , falling back to {@link #DEFAULT_TEXT_ENCODING}.
+     * Attempt to guess the encoding of a text file , falling back to a default text encoding.
      *
      * @param mimeTypeService The Alfresco MimetypeService <i>(must not be null)</i>.
      * @param file            The {@link java.io.File} to test <i>(must not be null)</i>.

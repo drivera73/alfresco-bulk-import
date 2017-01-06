@@ -53,7 +53,7 @@ import static org.alfresco.extension.bulkimport.util.LogUtils.*;
  * @author Peter Monks (pmonks@gmail.com)
  * @see MetadataLoader
  */
-abstract class AbstractMapBasedMetadataLoader
+public abstract class AbstractMapBasedMetadataLoader
     implements MetadataLoader
 {
     private final static Log log = LogFactory.getLog(AbstractMapBasedMetadataLoader.class);
