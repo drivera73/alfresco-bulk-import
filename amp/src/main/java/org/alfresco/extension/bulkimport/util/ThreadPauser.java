@@ -19,9 +19,6 @@
 
 package org.alfresco.extension.bulkimport.util;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -33,8 +30,6 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 public final class ThreadPauser
 {
-    private final static Log log = LogFactory.getLog(ThreadPauser.class);
-
     private volatile boolean       paused         = false;
     private final    ReentrantLock pauseLock      = new ReentrantLock();
     private final    Condition     pauseCondition = pauseLock.newCondition();

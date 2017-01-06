@@ -81,7 +81,7 @@ public class BulkImportThreadPoolExecutor
 
 
     /**
-     * @see {@link ThreadPoolExecutor#beforeExecute(Thread, Runnable)}
+     * @see ThreadPoolExecutor#beforeExecute(Thread, Runnable)
      */
     @Override
     protected void beforeExecute(final Thread thread, final Runnable runnable)
@@ -101,7 +101,7 @@ public class BulkImportThreadPoolExecutor
 
 
     /**
-     * @see {@link ThreadPoolExecutor#execute(Runnable)}
+     * @see ThreadPoolExecutor#execute(Runnable)
      */
     @Override
     public void execute(final Runnable command)

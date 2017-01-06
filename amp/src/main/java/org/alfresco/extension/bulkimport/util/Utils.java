@@ -76,7 +76,6 @@ public class Utils
      * 
      * @param serviceRegistry The ServiceRegistry <i>(must not be null)</i>.
      * @param path            The path <i>(must not be null, empty or blank)</i>.
-     * @return
      * @throws FileNotFoundException
      */
     public final static NodeRef convertPathToNodeRef(final ServiceRegistry serviceRegistry, final String path)
