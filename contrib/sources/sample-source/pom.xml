@@ -6,7 +6,7 @@
   <groupId>org.alfresco.extension</groupId>
   <artifactId>sample-bulk-import-source</artifactId>
   <packaging>amp</packaging>
-  <version>0.1-SNAPSHOT</version>
+  <version>0.1</version>
   <name>Sample Source - AMP</name>
   <description>A sample bulk import source that loads a small hardcoded set of content.</description>
 
@@ -37,7 +37,7 @@
     <dependency>
       <groupId>org.alfresco.extension</groupId>
       <artifactId>alfresco-bulk-import-api</artifactId>
-      <version>2.2.1-SNAPSHOT</version>
+      <version>2.2.1</version>
       <scope>provided</scope>
     </dependency>
   </dependencies>
