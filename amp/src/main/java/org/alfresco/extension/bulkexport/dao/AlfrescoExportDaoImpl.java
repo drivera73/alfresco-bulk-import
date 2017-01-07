@@ -17,19 +17,19 @@
 package org.alfresco.extension.bulkexport.dao;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.InputStream;
 import java.io.Serializable;
 import java.text.SimpleDateFormat;
-import java.io.File;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
-import java.util.Collection;
-import java.util.Iterator;
 
 import org.alfresco.extension.bulkexport.utils.Checksum;
 import org.alfresco.model.ContentModel;
@@ -46,14 +46,12 @@ import org.alfresco.service.cmr.repository.NodeRef;
 import org.alfresco.service.cmr.repository.NodeService;
 import org.alfresco.service.cmr.repository.Path;
 import org.alfresco.service.cmr.security.PermissionService;
-import org.alfresco.service.cmr.version.VersionService;
-import org.alfresco.service.cmr.version.VersionHistory;
 import org.alfresco.service.cmr.version.Version;
+import org.alfresco.service.cmr.version.VersionHistory;
+import org.alfresco.service.cmr.version.VersionService;
 import org.alfresco.service.namespace.NamespacePrefixResolver;
 import org.alfresco.service.namespace.QName;
-
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.time.DateFormatUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -184,16 +182,17 @@ public class AlfrescoExportDaoImpl implements AlfrescoExportDao
             {
                 continue;
             }
-                    
+
             Serializable obj = properties.get(qName);
             boolean multi = dictionaryService.getProperty(qName).isMultiValued();
             String name = this.getQnameStringFormat(qName);
             String value = this.formatMetadata(obj, multi);
-        
+
             //put key value in the property list as <prefixOfProperty:nameOfProperty, valueOfProperty>
             props.put(name, value);
         }
-        
+
+
         return props;
     }
 
