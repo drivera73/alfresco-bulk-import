@@ -40,7 +40,8 @@ import org.alfresco.service.ServiceRegistry;
 import org.alfresco.service.cmr.repository.ContentData;
 import org.alfresco.service.cmr.repository.ContentWriter;
 import org.alfresco.service.cmr.repository.MimetypeService;
-
+import org.alfresco.service.namespace.NamespacePrefixResolver;
+import org.alfresco.service.namespace.NamespaceService;
 import org.alfresco.extension.bulkimport.source.AbstractBulkImportItemVersion;
 import org.alfresco.extension.bulkimport.source.fs.MetadataLoader.Metadata;
 
@@ -58,10 +59,10 @@ public final class FilesystemBulkImportItemVersion
     @SuppressWarnings("unused")
     private final static Log log = LogFactory.getLog(FilesystemBulkImportItemVersion.class);
 
-    private final MimetypeService mimeTypeService;
-    private final ContentStore    configuredContentStore;
-    private final MetadataLoader  metadataLoader;
-    
+    private final MimetypeService  mimeTypeService;
+    private final ContentStore     configuredContentStore;
+    private final MetadataLoader   metadataLoader;
+    private final NamespaceService namespaceService;
 
     // Cached file info (to avoid repeated calls to stat syscall on the same file)
     private final boolean isDirectory;
@@ -90,6 +91,7 @@ public final class FilesystemBulkImportItemVersion
         this.metadataLoader         = metadataLoader;
         this.contentReference       = contentFile;
         this.metadataReference      = metadataFile;
+        this.namespaceService       = serviceRegistry.getNamespaceService();
 
         // "stat" the content file then cache the results
         this.isDirectory = serviceRegistry.getDictionaryService().isSubClass(createQName(serviceRegistry, getType()), ContentModel.TYPE_FOLDER);
@@ -253,10 +255,12 @@ public final class FilesystemBulkImportItemVersion
                 {
                     final Path                path       = contentReference.toPath();
                     final BasicFileAttributes attributes = Files.readAttributes(path, BasicFileAttributes.class);
+                    final NamespacePrefixResolver nspr   = this.namespaceService;
                     
                     // If not set in the metadata file, set the creation timestamp to what's on disk
                     if (!cachedMetadata.getProperties().containsKey(ContentModel.PROP_CREATED.toString()) &&
                         !cachedMetadata.getProperties().containsKey(ContentModel.PROP_CREATED.toPrefixString()) &&
+                        !cachedMetadata.getProperties().containsKey(ContentModel.PROP_CREATED.toPrefixString(nspr)) &&
                         attributes.creationTime() != null)
                     {
                         final Date created = new Date(attributes.creationTime().toMillis());
@@ -266,6 +270,7 @@ public final class FilesystemBulkImportItemVersion
                     // If not set in the metadata file, set the modification timestamp to what's on disk
                     if (!cachedMetadata.getProperties().containsKey(ContentModel.PROP_MODIFIED.toString()) &&
                         !cachedMetadata.getProperties().containsKey(ContentModel.PROP_MODIFIED.toPrefixString()) &&
+                        !cachedMetadata.getProperties().containsKey(ContentModel.PROP_MODIFIED.toPrefixString(nspr)) &&
                         attributes.lastModifiedTime() != null)
                     {
                         final Date modified = new Date(attributes.lastModifiedTime().toMillis());
