@@ -53,6 +53,7 @@ import org.alfresco.service.namespace.NamespacePrefixResolver;
 import org.alfresco.service.namespace.QName;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.time.DateFormatUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -746,6 +747,20 @@ public class AlfrescoExportDaoImpl implements AlfrescoExportDao
     }
 
 
+    private String formatMetadata (Serializable obj)
+    {
+    	if (obj == null) return "";
+    	if (Date.class.isInstance(obj))
+    	{
+    		Date d = Date.class.cast(obj);
+    		// TODO: some sort of pooling, for efficiency
+            SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZZ");
+    		return format.format(d);
+        }
+
+    	return obj.toString();
+    }
+
     /**
      * Format metadata guided by Bulk-Import format
      * 
@@ -754,45 +769,25 @@ public class AlfrescoExportDaoImpl implements AlfrescoExportDao
      */
     private String formatMetadata (Serializable obj, boolean isMulti)
     {
-        String returnValue = "";
-        
-        if(obj != null) 
-        {
-            if(obj instanceof Date)
-            {
-                SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZZ");
-                
-                Date date = (Date) obj;
-                returnValue = format.format(date);
-                //returnValue = returnValue.substring(0, 26) + ":" + returnValue.substring(26);
-            } 
-            else 
-            {
-                
-                //
-                // TODO: Format data to all bulk-import data format (list as example)
-                //
-                if (isMulti && obj instanceof List<?>) {
-                	List<?> newobj = (List<?>) obj;
-                	
-                	boolean str = false;
-                	if (!newobj.isEmpty() && newobj.get(0) instanceof String) {
-                		str = true;
-                		returnValue = (String) newobj.get(0);
-	                	for (int i = 1; i < newobj.size(); i++) {
-	                		returnValue = returnValue + "," + newobj.get(i);
-	                	}
-                	}
-                	if (!str) {
-                		returnValue = obj.toString();
-                	}
-                } else {
-                	returnValue = obj.toString();
-                }
-            }
-        }
-        
-        return returnValue;
+    	if (isMulti)
+    	{
+    		if (List.class.isInstance(obj))
+    		{
+    			@SuppressWarnings("unchecked")
+				List<Serializable> l = (List<Serializable>)obj; 
+        		StringBuilder b = new StringBuilder();
+        		boolean first = true;
+        		for (Serializable s : l)
+        		{
+        			if (!first) b.append(',');
+        			b.append(String.valueOf(s));
+        			first = false;
+        		}
+        		return b.toString();
+    		}
+    	}
+
+   		return formatMetadata(obj);
     }
 
 
