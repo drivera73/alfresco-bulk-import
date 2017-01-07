@@ -34,6 +34,7 @@ import org.alfresco.service.cmr.repository.NodeRef;
 import org.springframework.extensions.webscripts.AbstractWebScript;
 import org.springframework.extensions.webscripts.WebScriptRequest;
 import org.springframework.extensions.webscripts.WebScriptResponse;
+import org.apache.commons.lang3.text.StrTokenizer;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -60,8 +61,6 @@ public class Export extends AbstractWebScript
     protected Engine engine;
 
 	private Repository repositoryHelper;
-    
-	private final static String REGEX_SPLIT_PATH_ELEMENTS = "[\\\\/]+";
     
     /**
      * Method to start program execution. 
@@ -92,7 +91,7 @@ public class Export extends AbstractWebScript
         String checksum = null;
         String mode = null;
         String source = null;
-        
+
         if (req.getParameter("source") != null) {
         	source = req.getParameter("source");
         	if (source.startsWith("workspace://")) {
@@ -100,7 +99,8 @@ public class Export extends AbstractWebScript
         	} else {
         		// looks to be a path
         		NodeRef companyHome = repositoryHelper.getCompanyHome();
-	            List<String> pathElements = Arrays.asList(source.split(REGEX_SPLIT_PATH_ELEMENTS));
+        		
+	            List<String> pathElements = new StrTokenizer(source, '/').getTokenList();
 	 
 	            try {
 					nodeRef = serviceRegistry.getFileFolderService().resolveNamePath(companyHome, pathElements).getNodeRef().toString();
