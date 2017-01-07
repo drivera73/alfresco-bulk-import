@@ -10,6 +10,7 @@
 
 	<!-- Define abstract class to webscript report manager -->
 	<bean id="webscript.org.alfresco.extension.bulkexport.export.get" class="org.alfresco.extension.bulkexport.Export" parent="webscript">
+		<property name="serviceRegistry" ref="ServiceRegistry" />
 		<property name="repositoryHelper" ref="repositoryHelper" />
 	</bean>
 	
