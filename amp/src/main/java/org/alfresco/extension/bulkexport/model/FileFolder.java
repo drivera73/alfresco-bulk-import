@@ -24,12 +24,13 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
-import org.alfresco.extension.bulkexport.utils.XmlUtil;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.tika.io.IOUtils;
 import org.springframework.extensions.webscripts.WebScriptResponse;
+
+import com.armedia.caliente.tools.xml.XmlProperties;
 
 
 
@@ -292,7 +293,7 @@ public class FileFolder
 
 			try
 			{
-				XmlUtil.savePropertiesToXML(properties, out, null);
+				XmlProperties.saveToXML(properties, out, null);
 			}
 			finally
 			{

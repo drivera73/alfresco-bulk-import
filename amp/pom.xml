@@ -26,6 +26,11 @@
       <artifactId>alfresco-bulk-import-api</artifactId>
       <version>${project.version}</version>
     </dependency>
+    <dependency>
+      <groupId>com.armedia.caliente.tools</groupId>
+      <artifactId>caliente-tools-xml</artifactId>
+      <scope>compile</scope>
+    </dependency>
   </dependencies>
 
 </project>
