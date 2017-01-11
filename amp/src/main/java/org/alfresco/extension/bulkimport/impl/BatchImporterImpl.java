@@ -78,6 +78,9 @@ public final class BatchImporterImpl
 
     private final static String REGEX_SPLIT_PATH_ELEMENTS = "[\\\\/]+";
 
+    private static final NodeRef DRY_RUN_PARENT_NODEREF = new NodeRef(StoreRef.STORE_REF_WORKSPACE_SPACESSTORE, "dry-run-fake-parent-node-ref");
+    private static final NodeRef DRY_RUN_CREATED_NODEREF = new NodeRef(StoreRef.STORE_REF_WORKSPACE_SPACESSTORE, "dry-run-fake-created-node-ref");
+
     private final ServiceRegistry serviceRegistry;
     private final BehaviourFilter behaviourFilter;
     private final NodeService     nodeService;
@@ -337,13 +340,17 @@ public final class BatchImporterImpl
 
             // Find the node
             if (trace(log)) trace(log, "Searching for node with name '" + nodeName + "' within node '" + String.valueOf(parentNodeRef) + "' with parent association '" + String.valueOf(parentAssocQName) + "'.");
-            result = nodeService.getChildByName(parentNodeRef, parentAssocQName, nodeName);
+            
+            if (!dryRun || (!parentNodeRef.equals(DRY_RUN_PARENT_NODEREF) && !parentNodeRef.equals(DRY_RUN_CREATED_NODEREF)))
+            {
+                result = nodeService.getChildByName(parentNodeRef, parentAssocQName, nodeName);
+            }
         }
         catch (final OutOfOrderBatchException oobe)
         {
             if (dryRun)
             {
-                parentNodeRef = new NodeRef(StoreRef.STORE_REF_WORKSPACE_SPACESSTORE, "dry-run-fake-parent-node-ref");
+                parentNodeRef = DRY_RUN_PARENT_NODEREF;
             }
             else
             {
@@ -359,7 +366,7 @@ public final class BatchImporterImpl
             if (dryRun)
             {
                 if (info(log)) info(log, "[DRY RUN] Would have created new node of type '" + String.valueOf(itemTypeQName) + "' with qname '" + String.valueOf(nodeQName) + "' within node '" + String.valueOf(parentNodeRef) + "' with parent association '" + String.valueOf(parentAssocQName) + "'.");
-                result = new NodeRef(StoreRef.STORE_REF_WORKSPACE_SPACESSTORE, "dry-run-fake-created-node-ref");
+                result = DRY_RUN_CREATED_NODEREF;
             }
             else
             {
@@ -442,7 +449,7 @@ public final class BatchImporterImpl
                  !firstVersion.getAspects().contains(ContentModel.ASPECT_VERSIONABLE.toPrefixString())))
             {
                 if (debug(log)) debug(log, item.getName() + " has versions but is missing the cm:versionable aspect. Adding it.");
-                nodeService.addAspect(nodeRef, ContentModel.ASPECT_VERSIONABLE, null);
+                if (!dryRun) nodeService.addAspect(nodeRef, ContentModel.ASPECT_VERSIONABLE, null);
             }
 
             for (final BulkImportItemVersion version : item.getVersions())
