@@ -43,6 +43,22 @@
     <url>https://github.com/pmonks/alfresco-bulk-import/issues</url>
   </issueManagement>
 
+  <repositories>
+    <repository>
+      <id>Armedia Repository</id>
+      <name>Armedia Artifacts Repository</name>
+      <url>https://project.armedia.com/nexus/content/groups/armedia/</url>
+    </repository>
+  </repositories>
+
+  <pluginRepositories>
+    <pluginRepository>
+      <id>Armedia Repository</id>
+      <name>Armedia Artifacts Repository</name>
+      <url>https://project.armedia.com/nexus/content/groups/armedia/</url>
+    </pluginRepository>
+  </pluginRepositories>
+
   <dependencyManagement>
     <dependencies>
       <dependency>
