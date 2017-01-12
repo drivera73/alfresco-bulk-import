@@ -78,8 +78,7 @@ public final class BatchImporterImpl
 
     private final static String REGEX_SPLIT_PATH_ELEMENTS = "[\\\\/]+";
 
-    private static final StoreRef DRY_RUN_STORE = new StoreRef("dryrun", "dryrun");
-    private static final NodeRef DRY_RUN_PARENT_NODEREF = new NodeRef(DRY_RUN_STORE, "dry-run-fake-parent-node-ref");
+    private static final StoreRef DRY_RUN_STORE = new StoreRef("dryrun", "FakeStore");
     private static final NodeRef DRY_RUN_CREATED_NODEREF = new NodeRef(DRY_RUN_STORE, "dry-run-fake-created-node-ref");
 
     private final ServiceRegistry serviceRegistry;
@@ -328,35 +327,20 @@ public final class BatchImporterImpl
         boolean isDirectory      = item.isDirectory();
         String  parentAssoc      = item.getParentAssoc();
         QName   parentAssocQName = parentAssoc == null ? ContentModel.ASSOC_CONTAINS : createQName(serviceRegistry, parentAssoc);
-        NodeRef parentNodeRef    = null;
 
-        try
+        NodeRef parentNodeRef = getParent(target, item);
+
+        if (parentNodeRef == null)
         {
-            parentNodeRef = getParent(target, item);
-
-            if (parentNodeRef == null)
-            {
-                parentNodeRef = target;
-            }
-
-            // Find the node
-            if (trace(log)) trace(log, "Searching for node with name '" + nodeName + "' within node '" + String.valueOf(parentNodeRef) + "' with parent association '" + String.valueOf(parentAssocQName) + "'.");
-            
-            if (!dryRun || (!parentNodeRef.equals(DRY_RUN_PARENT_NODEREF) && !parentNodeRef.equals(DRY_RUN_CREATED_NODEREF)))
-            {
-                result = nodeService.getChildByName(parentNodeRef, parentAssocQName, nodeName);
-            }
+            parentNodeRef = target;
         }
-        catch (final OutOfOrderBatchException oobe)
+
+        // Find the node
+        if (trace(log)) trace(log, "Searching for node with name '" + nodeName + "' within node '" + String.valueOf(parentNodeRef) + "' with parent association '" + String.valueOf(parentAssocQName) + "'.");
+        
+        if (!dryRun || !DRY_RUN_STORE.equals(parentNodeRef.getStoreRef()))
         {
-            if (dryRun)
-            {
-                parentNodeRef = DRY_RUN_PARENT_NODEREF;
-            }
-            else
-            {
-                throw oobe;
-            }
+            result = nodeService.getChildByName(parentNodeRef, parentAssocQName, nodeName);
         }
 
         if (result == null)    // We didn't find it, so create a new node in the repo.
@@ -364,16 +348,15 @@ public final class BatchImporterImpl
             String itemType      = item.getVersions().first().getType();
             QName  itemTypeQName = itemType == null ? (isDirectory ? ContentModel.TYPE_FOLDER : ContentModel.TYPE_CONTENT) : createQName(serviceRegistry, itemType);
 
+            if (trace(log)) trace(log, "Creating new node of type '" + String.valueOf(itemTypeQName) + "' with qname '" + String.valueOf(nodeQName) + "' within node '" + String.valueOf(parentNodeRef) + "' with parent association '" + String.valueOf(parentAssocQName) + "'.");
+            Map<QName, Serializable> props = new HashMap<>();
+            props.put(ContentModel.PROP_NAME, nodeName);
             if (dryRun)
             {
-                if (info(log)) info(log, "[DRY RUN] Would have created new node of type '" + String.valueOf(itemTypeQName) + "' with qname '" + String.valueOf(nodeQName) + "' within node '" + String.valueOf(parentNodeRef) + "' with parent association '" + String.valueOf(parentAssocQName) + "'.");
-                result = DRY_RUN_CREATED_NODEREF;
+            	result = DRY_RUN_CREATED_NODEREF;
             }
             else
             {
-                if (trace(log)) trace(log, "Creating new node of type '" + String.valueOf(itemTypeQName) + "' with qname '" + String.valueOf(nodeQName) + "' within node '" + String.valueOf(parentNodeRef) + "' with parent association '" + String.valueOf(parentAssocQName) + "'.");
-                Map<QName, Serializable> props = new HashMap<>();
-                props.put(ContentModel.PROP_NAME, nodeName);
                 result = nodeService.createNode(parentNodeRef, parentAssocQName, nodeQName, itemTypeQName, props).getChildRef();
             }
         }
@@ -502,22 +485,15 @@ public final class BatchImporterImpl
             versionProperties.put(Version.PROP_DESCRIPTION, version.getVersionComment());
         }
 
-        if (dryRun)
+        // Only create versions if we have to - this is an exceptionally expensive operation in Alfresco
+        if (onlyOneVersion)
         {
-            if (info(log)) info(log, "[DRY RUN] Would have created " + (isMajor ? "major" : "minor") + " version of node '" + String.valueOf(nodeRef) + "'.");
+            if (trace(log)) trace(log, "Skipping creation of a version for node '" + String.valueOf(nodeRef) + "' as it only has one version.");
         }
         else
         {
-            // Only create versions if we have to - this is an exceptionally expensive operation in Alfresco
-            if (onlyOneVersion)
-            {
-                if (trace(log)) trace(log, "Skipping creation of a version for node '" + String.valueOf(nodeRef) + "' as it only has one version.");
-            }
-            else
-            {
-                if (trace(log)) trace(log, "Creating " + (isMajor ? "major" : "minor") + " version of node '" + String.valueOf(nodeRef) + "'.");
-                versionService.createVersion(nodeRef, versionProperties);
-            }
+            if (trace(log)) trace(log, "Creating " + (isMajor ? "major" : "minor") + " version of node '" + String.valueOf(nodeRef) + "'.");
+            if (!dryRun) versionService.createVersion(nodeRef, versionProperties);
         }
     }
 
@@ -550,15 +526,8 @@ public final class BatchImporterImpl
 
         if (type != null)
         {
-            if (dryRun)
-            {
-                if (info(log)) info(log, "[DRY RUN] Would have set type of '" + String.valueOf(nodeRef) + "' to '" + String.valueOf(type) + "'.");
-            }
-            else
-            {
-                if (trace(log)) trace(log, "Setting type of '" + String.valueOf(nodeRef) + "' to '" + String.valueOf(type) + "'.");
-                nodeService.setType(nodeRef, createQName(serviceRegistry, type));
-            }
+            if (trace(log)) trace(log, "Setting type of '" + String.valueOf(nodeRef) + "' to '" + String.valueOf(type) + "'.");
+            if (!dryRun) nodeService.setType(nodeRef, createQName(serviceRegistry, type));
         }
 
         if (aspects != null)
@@ -567,15 +536,8 @@ public final class BatchImporterImpl
             {
                 if (importStatus.isStopping() || Thread.currentThread().isInterrupted()) throw new InterruptedException(Thread.currentThread().getName() + " was interrupted. Terminating early.");
 
-                if (dryRun)
-                {
-                    if (info(log)) info(log, "[DRY RUN] Would have added aspect '" + aspect + "' to '" + String.valueOf(nodeRef) + "'.");
-                }
-                else
-                {
-                    if (trace(log)) trace(log, "Adding aspect '" + aspect + "' to '" + String.valueOf(nodeRef) + "'.");
-                    nodeService.addAspect(nodeRef, createQName(serviceRegistry, aspect), null);
-                }
+                if (trace(log)) trace(log, "Adding aspect '" + aspect + "' to '" + String.valueOf(nodeRef) + "'.");
+                if (!dryRun) nodeService.addAspect(nodeRef, createQName(serviceRegistry, aspect), null);
             }
         }
 
@@ -597,34 +559,26 @@ public final class BatchImporterImpl
                 qNamedMetadata.put(keyQName, value);
             }
 
-            if (dryRun)
+            try
             {
-                if (info(log)) info(log, "[DRY RUN] Would have added the following properties to '" + String.valueOf(nodeRef) +
-                                         "':\n" + Arrays.toString(qNamedMetadata.entrySet().toArray()));
+                if (trace(log)) trace(log, "Adding the following properties to '" + String.valueOf(nodeRef) +
+                                           "':\n" + Arrays.toString(qNamedMetadata.entrySet().toArray()));
+                if (!dryRun) nodeService.addProperties(nodeRef, qNamedMetadata);
             }
-            else
+            catch (final InvalidNodeRefException inre)
             {
-                try
+                if (!nodeRef.equals(inre.getNodeRef()))
                 {
-                    if (trace(log)) trace(log, "Adding the following properties to '" + String.valueOf(nodeRef) +
-                                               "':\n" + Arrays.toString(qNamedMetadata.entrySet().toArray()));
-                    nodeService.addProperties(nodeRef, qNamedMetadata);
+                    // Caused by an invalid NodeRef in the metadata (e.g. in an association)
+                    throw new IllegalStateException("Invalid nodeRef found in metadata file '" + version.getMetadataSource() + "'.  " +
+                                                    "Probable cause: an association is being populated via metadata, but the " +
+                                                    "NodeRef for the target of that association ('" + inre.getNodeRef() + "') is invalid.  " +
+                                                    "Please double check your metadata file and try again.", inre);
                 }
-                catch (final InvalidNodeRefException inre)
+                else
                 {
-                    if (!nodeRef.equals(inre.getNodeRef()))
-                    {
-                        // Caused by an invalid NodeRef in the metadata (e.g. in an association)
-                        throw new IllegalStateException("Invalid nodeRef found in metadata file '" + version.getMetadataSource() + "'.  " +
-                                                        "Probable cause: an association is being populated via metadata, but the " +
-                                                        "NodeRef for the target of that association ('" + inre.getNodeRef() + "') is invalid.  " +
-                                                        "Please double check your metadata file and try again.", inre);
-                    }
-                    else
-                    {
-                        // Logic bug in the BFSIT.  :-(
-                        throw inre;
-                    }
+                    // Logic bug in the BFSIT.  :-(
+                    throw inre;
                 }
             }
         }
@@ -640,14 +594,7 @@ public final class BatchImporterImpl
         {
             if (version.contentIsInPlace())
             {
-                if (dryRun)
-                {
-                    if (info(log)) info(log, "[DRY RUN] Content for node '" + String.valueOf(nodeRef) + "' is in-place.");
-                }
-                else
-                {
-                    if (trace(log)) trace(log, "Content for node '" + String.valueOf(nodeRef) + "' is in-place.");
-                }
+                if (trace(log)) trace(log, "Content for node '" + String.valueOf(nodeRef) + "' is in-place.");
 
                 if (!version.hasMetadata() ||
                     version.getMetadata() == null ||
@@ -664,19 +611,15 @@ public final class BatchImporterImpl
             }
             else  // Content needs to be streamed into the repository
             {
-                if (dryRun)
-                {
-                    if (info(log)) info(log, "[DRY RUN] Would have streamed content from '" + version.getContentSource() + "' into node '" + String.valueOf(nodeRef) + "'.");
-                }
-                else
-                {
-                    if (trace(log)) trace(log, "Streaming content from '" + version.getContentSource() + "' into node '" + String.valueOf(nodeRef) + "'.");
+                if (trace(log)) trace(log, "Streaming content from '" + version.getContentSource() + "' into node '" + String.valueOf(nodeRef) + "'.");
 
+                if (!dryRun)
+                {
                     ContentWriter writer = contentService.getWriter(nodeRef, ContentModel.PROP_CONTENT, true);
                     version.putContent(writer);
-
-                    if (trace(log)) trace(log, "Finished streaming content from '" + version.getContentSource() + "' into node '" + String.valueOf(nodeRef) + "'.");
                 }
+
+                if (trace(log)) trace(log, "Finished streaming content from '" + version.getContentSource() + "' into node '" + String.valueOf(nodeRef) + "'.");
 
                 importStatus.incrementTargetCounter(BulkImportStatus.TARGET_COUNTER_CONTENT_STREAMED);
             }
