@@ -73,6 +73,11 @@
         <artifactId>caliente-tools-xml</artifactId>
         <version>3.4.7</version>
       </dependency>
+      <dependency>
+        <groupId>com.armedia.commons</groupId>
+        <artifactId>utilities</artifactId>
+        <version>0.3.17</version>
+      </dependency>
     </dependencies>
   </dependencyManagement>
 
