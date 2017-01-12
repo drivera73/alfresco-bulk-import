@@ -78,8 +78,9 @@ public final class BatchImporterImpl
 
     private final static String REGEX_SPLIT_PATH_ELEMENTS = "[\\\\/]+";
 
-    private static final NodeRef DRY_RUN_PARENT_NODEREF = new NodeRef(StoreRef.STORE_REF_WORKSPACE_SPACESSTORE, "dry-run-fake-parent-node-ref");
-    private static final NodeRef DRY_RUN_CREATED_NODEREF = new NodeRef(StoreRef.STORE_REF_WORKSPACE_SPACESSTORE, "dry-run-fake-created-node-ref");
+    private static final StoreRef DRY_RUN_STORE = new StoreRef("dryrun", "dryrun");
+    private static final NodeRef DRY_RUN_PARENT_NODEREF = new NodeRef(DRY_RUN_STORE, "dry-run-fake-parent-node-ref");
+    private static final NodeRef DRY_RUN_CREATED_NODEREF = new NodeRef(DRY_RUN_STORE, "dry-run-fake-created-node-ref");
 
     private final ServiceRegistry serviceRegistry;
     private final BehaviourFilter behaviourFilter;
