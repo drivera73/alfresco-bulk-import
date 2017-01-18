@@ -1,0 +1,11 @@
+<webscript>
+  <shortname>Bulk Export UI</shortname>
+  <description>Bulk Export User Interface</description>
+  <url>/bulk/export/ui</url>
+  <authentication>admin</authentication>
+  <transaction>required</transaction>
+  <family>Bulk Export</family>
+  <cache>
+     <never>true</never>
+  </cache>
+</webscript>

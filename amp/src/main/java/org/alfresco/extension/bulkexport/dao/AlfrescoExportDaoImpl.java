@@ -141,16 +141,31 @@ public class AlfrescoExportDaoImpl implements AlfrescoExportDao
     public AlfrescoExportDaoImpl(ServiceRegistry registry) 
     {
         log.debug("Test debug logging. Congratulation your AMP is working");
+
         this.registry  = registry;
+        if (registry == null) {
+        	log.info("service registry is null :(");
+        } else {
+        	log.info("service registry is not null :");
+        }
 
         nodeService    = this.registry.getNodeService();
+        log.info("Fetched node service");
         service        = this.registry.getFileFolderService();
+        log.info("Fetched file folder service");
         nsR            = this.registry.getNamespaceService();
+        log.info("Fetched nsr service");
         contentService = this.registry.getContentService();
+        log.info("Fetched content service");
         permissionService = this.registry.getPermissionService();
+        log.info("Fetched permission service");
         versionService = this.registry.getVersionService();
+        log.info("Fetched version service");
         dictionaryService = this.registry.getDictionaryService();
+        log.info("Fetched dictionary service");
         pathCache = new HashMap<NodeRef, String>();
+        
+        log.info("dao is ready");
     }
     
     
@@ -313,10 +328,10 @@ public class AlfrescoExportDaoImpl implements AlfrescoExportDao
     		
     		// check to see if we have already cached this path
     		
-//    		if (pathCache.containsKey(nodeRef)) {
-//    			path = pathCache.get(nodeRef);
-//    			return path;
-//    		}
+    		if (pathCache.containsKey(nodeRef)) {
+    			path = pathCache.get(nodeRef);
+    			return path;
+    		}
     		
     		List<QName> newFolderProperties = new ArrayList<QName>();
     		if (nodeService.hasAspect(nodeRef, ASPECT_CALIENTE_VDOCROOT)) {
@@ -529,6 +544,10 @@ public class AlfrescoExportDaoImpl implements AlfrescoExportDao
     {
         log.debug("isFolder");
 
+        log.info("inside isFolder");
+        if (service == null) {
+        	log.info("hmm, service is null :(");
+        }
         FileInfo info = service.getFileInfo(nodeRef);
         log.debug("isFolder got file info getName = " + info.getName());
         log.debug("isFolder got file info isFolder = " + info.isFolder());
@@ -799,6 +818,9 @@ public class AlfrescoExportDaoImpl implements AlfrescoExportDao
 		this.truncatePath = truncatePath;
 	}
 
+	public boolean getTruncatePath() {
+		return this.truncatePath;
+	}
 
 	public NodeRef getExportNodeRef() {
 		return exportNodeRef;
@@ -817,5 +839,9 @@ public class AlfrescoExportDaoImpl implements AlfrescoExportDao
 
 	public void setFolderProperties(List<QName> folderProperties) {
 		this.folderProperties = folderProperties;
+	}
+	
+	public ServiceRegistry getServiceRegistry() {
+		return this.registry;
 	}
 }

@@ -1,0 +1,12 @@
+<webscript>
+  <shortname>Bulk Export Initiate</shortname>
+  <description>Bulk Export Initiate</description>
+  <url>/bulk/export/initiate</url>
+  <format default="html"/>
+  <authentication>admin</authentication>
+  <transaction allow="readonly">required</transaction>
+  <family>Bulk Export</family>
+  <cache>
+    <never>true</never>
+  </cache>
+</webscript>

@@ -7,11 +7,8 @@
                            http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
                            http://www.springframework.org/schema/util
                            http://www.springframework.org/schema/util/spring-util-3.0.xsd">  
-
-	<!-- Define abstract class to webscript report manager -->
-	<bean id="webscript.org.alfresco.extension.bulkexport.export.get" class="org.alfresco.extension.bulkexport.Export" parent="webscript">
-		<property name="serviceRegistry" ref="ServiceRegistry" />
-		<property name="repositoryHelper" ref="repositoryHelper" />
-	</bean>
-	
+  
+  <!-- Import application contexts from dedicated sub-directory. -->
+  <import resource="classpath:alfresco/module/org.alfresco.extension.alfresco-bulk-export/context/*-context.xml"/>
+  
 </beans>
