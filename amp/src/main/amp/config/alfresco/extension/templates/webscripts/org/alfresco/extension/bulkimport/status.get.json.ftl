@@ -100,8 +100,8 @@
     [#list importStatus.errorInfo as error]
     {
       [#assign TimeStamp = error.timeStampStr!'']
-      [#assign Error     = error.errorStr!'']
       [#assign Item      = error.item!'']
+      [#assign Error     = error.errorStr!'']
       "TimeStamp" : "${TimeStamp?js_string?replace("\\'", "'")?replace("\\>", ">")}",
       "Item" : "${Item?js_string?replace("\\'", "'")?replace("\\>", ">")}",
       "Error"  : "${Error?js_string?replace("\\'", "'")?replace("\\>", ">")}"
