@@ -22,12 +22,9 @@ package org.alfresco.extension.bulkimport.impl;
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static org.alfresco.extension.bulkimport.util.LogUtils.getHumanReadableDuration;
 
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
@@ -40,9 +37,6 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.alfresco.extension.bulkimport.BulkImportErrorInfo;
 import org.alfresco.extension.bulkimport.source.BulkImportSource;
-import org.apache.commons.lang3.time.DateFormatUtils;
-
-import com.armedia.commons.utilities.Tools;
 
 
 /**
