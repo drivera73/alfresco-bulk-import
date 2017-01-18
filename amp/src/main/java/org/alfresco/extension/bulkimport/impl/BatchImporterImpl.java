@@ -228,7 +228,6 @@ public final class BatchImporterImpl
         }
     }
 
-
     private final <T extends BulkImportItemVersion>
     void importItem(final NodeRef           target,
                     final BulkImportItem<T> item,
