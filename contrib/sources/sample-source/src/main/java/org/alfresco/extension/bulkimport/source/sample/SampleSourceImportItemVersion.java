@@ -76,4 +76,10 @@ public final class SampleSourceImportItemVersion
         writer.putContent(contentReference);
     }
 
+	@Override
+	public void validateContent() throws Exception
+	{
+		// Do nothing...
+	}
+
 }
