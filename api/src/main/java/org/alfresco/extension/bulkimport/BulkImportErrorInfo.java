@@ -70,9 +70,6 @@ public class BulkImportErrorInfo
 			// TODO: Generate the full dry run report
 			return null;
 		}
-		else
-		{
-			return Tools.dumpStackTrace(error);
-		}
+		return Tools.dumpStackTrace(error);
 	}
 }
