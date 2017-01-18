@@ -49,6 +49,8 @@ public class DryRun<V extends BulkImportItemVersion> {
 	private final List<Fault> itemFaults = new ArrayList<Fault>();
 	
 	private final Map<BigDecimal, List<Fault>> versionFaults = new LinkedHashMap<>();
+	
+	private String errorReport = null;
 
 	public DryRun(BulkImportItem<V> item)
 	{
@@ -63,6 +65,7 @@ public class DryRun<V extends BulkImportItemVersion> {
 	public void addItemFault(String message)
 	{
 		itemFaults.add(new Fault(message));
+		errorReport = null;
 	}
 
 	public void addItemFault(Throwable exception)
@@ -79,6 +82,7 @@ public class DryRun<V extends BulkImportItemVersion> {
 			versionFaults.put(version.getVersionNumber(), c);
 		}
 		c.add(new Fault(message));
+		errorReport = null;
 	}
 
 	public void addVersionFault(V version, Throwable exception)
@@ -104,5 +108,10 @@ public class DryRun<V extends BulkImportItemVersion> {
 	public Collection<Fault> getVersionFaults(BigDecimal version)
 	{
 		return Collections.unmodifiableCollection(this.versionFaults.get(version));
+	}
+	
+	public String generateErrorReport()
+	{
+		return null;
 	}
 }
