@@ -237,10 +237,12 @@ public final class BatchImporterImpl
         }
         catch (final OutOfOrderBatchException oobe)
         {
+    		importStatus.unexpectedError(getCompletePath(item), oobe);
             throw oobe;
         }
         catch (final Exception e)
         {
+    		importStatus.unexpectedError(getCompletePath(item), e);
             // Capture the item that failed, along with the exception
             throw new ItemImportException(item, e);
         }
@@ -252,6 +254,11 @@ public final class BatchImporterImpl
     	if (path == null) path = item.getRelativePathOfParent();
     	if (path == null) path = "";
     	return path;
+    }
+
+    private String getCompletePath(final BulkImportItem<BulkImportItemVersion> item)
+    {
+    	return String.format("%s/%s", getRelativePath(item), item.getName());
     }
 
     private NodeRef getParent(final NodeRef target, final BulkImportItem<BulkImportItemVersion> item)
@@ -329,7 +336,7 @@ public final class BatchImporterImpl
         {
         	if (dryRun)
         	{
-        		importStatus.unexpectedError(getRelativePath(item), oobe);
+        		importStatus.unexpectedError(getCompletePath(item), oobe);
         		parentNodeRef = DRY_RUN_CREATED_NODEREF;
         	}
         	else
@@ -546,6 +553,11 @@ public final class BatchImporterImpl
                 if (importStatus.isStopping() || Thread.currentThread().isInterrupted()) throw new InterruptedException(Thread.currentThread().getName() + " was interrupted. Terminating early.");
 
                 if (trace(log)) trace(log, "Adding aspect '" + aspect + "' to '" + String.valueOf(nodeRef) + "'.");
+                if (dryRun)
+                {
+                	// TODO: Perform dry run validations to check whether the aspect is valid (and
+                	// track it for the below metadata validations)
+                }
                 if (!dryRun) nodeService.addAspect(nodeRef, createQName(serviceRegistry, aspect), null);
             }
         }
@@ -565,6 +577,10 @@ public final class BatchImporterImpl
                 QName        keyQName = createQName(serviceRegistry, key);
                 Serializable value    = metadata.get(key);
 
+                if (dryRun)
+                {
+                	// TODO: Perform dry run validations of the metadata against the object's type and aspects
+                }
                 qNamedMetadata.put(keyQName, value);
             }
 
@@ -616,13 +632,23 @@ public final class BatchImporterImpl
                                                     "' property.");
                 }
 
+                if (dryRun)
+                {
+                	// TODO: Perform dry run validation that the in-place content exists and is at the location
+                	// that the PROP_CONTENT property says it is
+                }
+
                 importStatus.incrementTargetCounter(BulkImportStatus.TARGET_COUNTER_IN_PLACE_CONTENT_LINKED);
             }
             else  // Content needs to be streamed into the repository
             {
                 if (trace(log)) trace(log, "Streaming content from '" + version.getContentSource() + "' into node '" + String.valueOf(nodeRef) + "'.");
 
-                if (!dryRun)
+                if (dryRun)
+                {
+                	// TODO: Perform dry run validation that the content exists and is readable
+                }
+                else
                 {
                     ContentWriter writer = contentService.getWriter(nodeRef, ContentModel.PROP_CONTENT, true);
                     version.putContent(writer);
