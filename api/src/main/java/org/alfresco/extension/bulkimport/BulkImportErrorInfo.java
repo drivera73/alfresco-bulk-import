@@ -65,6 +65,14 @@ public class BulkImportErrorInfo
 
 	public final String getErrorStr()
 	{
-		return Tools.dumpStackTrace(error);
+		if (DryRunException.class.isInstance(this.error))
+		{
+			// TODO: Generate the full dry run report
+			return null;
+		}
+		else
+		{
+			return Tools.dumpStackTrace(error);
+		}
 	}
 }

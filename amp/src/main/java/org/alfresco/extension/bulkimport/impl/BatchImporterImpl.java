@@ -19,10 +19,12 @@
 
 package org.alfresco.extension.bulkimport.impl;
 
+import java.io.File;
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -36,6 +38,8 @@ import org.apache.commons.lang3.concurrent.ConcurrentUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import com.armedia.commons.utilities.Tools;
+
 import org.alfresco.model.ContentModel;
 import org.alfresco.repo.policy.BehaviourFilter;
 import org.alfresco.repo.security.authentication.AuthenticationUtil;
@@ -44,6 +48,12 @@ import org.alfresco.repo.transaction.RetryingTransactionHelper;
 import org.alfresco.repo.transaction.RetryingTransactionHelper.RetryingTransactionCallback;
 import org.alfresco.repo.version.VersionModel;
 import org.alfresco.service.ServiceRegistry;
+import org.alfresco.service.cmr.dictionary.AspectDefinition;
+import org.alfresco.service.cmr.dictionary.ConstraintDefinition;
+import org.alfresco.service.cmr.dictionary.ConstraintException;
+import org.alfresco.service.cmr.dictionary.DictionaryService;
+import org.alfresco.service.cmr.dictionary.PropertyDefinition;
+import org.alfresco.service.cmr.dictionary.TypeDefinition;
 import org.alfresco.service.cmr.model.FileInfo;
 import org.alfresco.service.cmr.model.FileNotFoundException;
 import org.alfresco.service.cmr.repository.ContentService;
@@ -58,6 +68,8 @@ import org.alfresco.service.namespace.NamespaceService;
 import org.alfresco.service.namespace.QName;
 
 import org.alfresco.extension.bulkimport.BulkImportStatus;
+import org.alfresco.extension.bulkimport.DryRun;
+import org.alfresco.extension.bulkimport.DryRunException;
 import org.alfresco.extension.bulkimport.source.BulkImportItem;
 import org.alfresco.extension.bulkimport.source.BulkImportItemVersion;
 
@@ -142,7 +154,14 @@ public final class BatchImporterImpl
             public Object doWork()
                 throws Exception
             {
-                importBatchInTxn(target, batch, replaceExisting, dryRun);
+            	if (dryRun)
+            	{
+            		importBatchImpl(target, batch, replaceExisting, dryRun);
+            	}
+            	else
+            	{
+                    importBatchInTxn(target, batch, replaceExisting, dryRun);
+            	}
                 return(null);
             }
         }, userId);
@@ -196,18 +215,28 @@ public final class BatchImporterImpl
             {
                 if (importStatus.isStopping() || Thread.currentThread().isInterrupted()) throw new InterruptedException(Thread.currentThread().getName() + " was interrupted. Terminating early.");
 
-                importItem(target, item, replaceExisting, dryRun);
+                try
+                {
+                	importItem(target, item, replaceExisting, dryRun);
+                }
+                catch (DryRunException e)
+                {
+                	// Catch this so we don't break the current batch
+                	importStatus.unexpectedError(getCompletePath(item), e);
+                }
             }
         }
     }
 
 
-    private final void importItem(final NodeRef                               target,
-                                  final BulkImportItem<BulkImportItemVersion> item,
-                                  final boolean                               replaceExisting,
-                                  final boolean                               dryRun)
+    private final <T extends BulkImportItemVersion>
+    void importItem(final NodeRef           target,
+                    final BulkImportItem<T> item,
+                    final boolean           replaceExisting,
+                    final boolean           useDryRun)
         throws InterruptedException
     {
+    	final DryRun<T> dryRun = (useDryRun ? new DryRun<T>(item) : null);
         try
         {
             if (trace(log)) trace(log, "Importing " + (item.isDirectory() ? "directory " : "file ") + String.valueOf(item) + ".");
@@ -248,7 +277,7 @@ public final class BatchImporterImpl
         }
     }
 
-    private String getRelativePath(final BulkImportItem<BulkImportItemVersion> item)
+    public static String getRelativePath(final BulkImportItem<?> item)
     {
     	String path = item.getAltRelativePathOfParent();
     	if (path == null) path = item.getRelativePathOfParent();
@@ -256,12 +285,12 @@ public final class BatchImporterImpl
     	return path;
     }
 
-    private String getCompletePath(final BulkImportItem<BulkImportItemVersion> item)
+    public static String getCompletePath(final BulkImportItem<?> item)
     {
     	return String.format("%s/%s", getRelativePath(item), item.getName());
     }
 
-    private NodeRef getParent(final NodeRef target, final BulkImportItem<BulkImportItemVersion> item)
+    private NodeRef getParent(final NodeRef target, final BulkImportItem<?> item)
     {
         final String itemParentPath = getRelativePath(item);
     	return ConcurrentUtils.createIfAbsentUnchecked(this.parentCache, itemParentPath, new ConcurrentInitializer<NodeRef>()
@@ -298,7 +327,7 @@ public final class BatchImporterImpl
     	});
     }
 
-    private NodeRef cacheNode(final BulkImportItem<BulkImportItemVersion> item, NodeRef nodeRef)
+    private NodeRef cacheNode(final BulkImportItem<?> item, NodeRef nodeRef)
     {
     	if (nodeRef == null) return null;
     	String itemPath = getRelativePath(item);
@@ -313,10 +342,11 @@ public final class BatchImporterImpl
     	return ConcurrentUtils.putIfAbsent(this.parentCache, itemPath, nodeRef);
     }
 
-    private final NodeRef findOrCreateNode(final NodeRef                               target,
-                                           final BulkImportItem<BulkImportItemVersion> item,
-                                           final boolean                               replaceExisting,
-                                           final boolean                               dryRun)
+    private final <T extends BulkImportItemVersion>
+    NodeRef findOrCreateNode(final NodeRef           target,
+                                           final BulkImportItem<T> item,
+                                           final boolean           replaceExisting,
+                                           final DryRun<T>         dryRun)
     {
         NodeRef result           = null;
         String  nodeName         = item.getName();
@@ -334,9 +364,9 @@ public final class BatchImporterImpl
         }
         catch (final OutOfOrderBatchException oobe)
         {
-        	if (dryRun)
+        	if (dryRun != null)
         	{
-        		importStatus.unexpectedError(getCompletePath(item), oobe);
+        		dryRun.addItemFault(String.format("Missing parent path [%s]", getRelativePath(item)));
         		parentNodeRef = DRY_RUN_CREATED_NODEREF;
         	}
         	else
@@ -354,7 +384,7 @@ public final class BatchImporterImpl
         // Find the node
         if (trace(log)) trace(log, "Searching for node with name '" + nodeName + "' within node '" + String.valueOf(parentNodeRef) + "' with parent association '" + String.valueOf(parentAssocQName) + "'.");
         
-        if (!dryRun || !DRY_RUN_STORE.equals(parentNodeRef.getStoreRef()))
+        if ((dryRun == null) || !DRY_RUN_STORE.equals(parentNodeRef.getStoreRef()))
         {
             result = nodeService.getChildByName(parentNodeRef, parentAssocQName, nodeName);
         }
@@ -367,7 +397,7 @@ public final class BatchImporterImpl
             if (trace(log)) trace(log, "Creating new node of type '" + String.valueOf(itemTypeQName) + "' with qname '" + String.valueOf(nodeQName) + "' within node '" + String.valueOf(parentNodeRef) + "' with parent association '" + String.valueOf(parentAssocQName) + "'.");
             Map<QName, Serializable> props = new HashMap<>();
             props.put(ContentModel.PROP_NAME, nodeName);
-            if (dryRun)
+            if (dryRun != null)
             {
             	result = DRY_RUN_CREATED_NODEREF;
             }
@@ -390,9 +420,10 @@ public final class BatchImporterImpl
         return (item.isDirectory() ? cacheNode(item, result) : result);
     }
 
-    private final void importDirectory(final NodeRef                               nodeRef,
-                                       final BulkImportItem<BulkImportItemVersion> item,
-                                       final boolean                               dryRun)
+    private final <T extends BulkImportItemVersion>
+    void importDirectory(final NodeRef           nodeRef,
+                         final BulkImportItem<T> item,
+                         final DryRun<T>         dryRun)
         throws InterruptedException
     {
         if (item.getVersions() != null &&
@@ -403,7 +434,7 @@ public final class BatchImporterImpl
                 warn(log, "Skipping versions for directory '" + item.getName() + "' - Alfresco does not support versioned spaces.");
             }
 
-            final BulkImportItemVersion lastVersion = item.getVersions().last();
+            final T lastVersion = item.getVersions().last();
 
             if (lastVersion.hasContent())
             {
@@ -411,7 +442,7 @@ public final class BatchImporterImpl
             }
 
             // Import the last version's metadata only
-            importVersionMetadata(nodeRef, lastVersion, dryRun);
+            importVersionMetadata(nodeRef, item, lastVersion, dryRun);
         }
         else
         {
@@ -422,9 +453,10 @@ public final class BatchImporterImpl
     }
 
 
-    private final void importFile(final NodeRef                               nodeRef,
-                                  final BulkImportItem<BulkImportItemVersion> item,
-                                  final boolean                               dryRun)
+    private final <T extends BulkImportItemVersion>
+    void importFile(final NodeRef           nodeRef,
+                    final BulkImportItem<T> item,
+                    final DryRun<T>         dryRun)
         throws InterruptedException
     {
         final int numberOfVersions = item.getVersions().size();
@@ -435,12 +467,12 @@ public final class BatchImporterImpl
         }
         else if (numberOfVersions == 1)
         {
-            importVersion(nodeRef, null, item.getVersions().first(), dryRun, true);
+            importVersion(nodeRef, item, null, item.getVersions().first(), dryRun, true);
         }
         else
         {
-            final BulkImportItemVersion firstVersion = item.getVersions().first();
-            BulkImportItemVersion previousVersion = null;
+            final T firstVersion = item.getVersions().first();
+            T previousVersion = null;
 
             // Add the cm:versionable aspect if it isn't already there
             if (firstVersion.getAspects() == null ||
@@ -449,14 +481,14 @@ public final class BatchImporterImpl
                  !firstVersion.getAspects().contains(ContentModel.ASPECT_VERSIONABLE.toPrefixString())))
             {
                 if (debug(log)) debug(log, item.getName() + " has versions but is missing the cm:versionable aspect. Adding it.");
-                if (!dryRun) nodeService.addAspect(nodeRef, ContentModel.ASPECT_VERSIONABLE, null);
+                if (dryRun == null) nodeService.addAspect(nodeRef, ContentModel.ASPECT_VERSIONABLE, null);
             }
 
-            for (final BulkImportItemVersion version : item.getVersions())
+            for (final T version : item.getVersions())
             {
                 if (importStatus.isStopping() || Thread.currentThread().isInterrupted()) throw new InterruptedException(Thread.currentThread().getName() + " was interrupted. Terminating early.");
 
-                importVersion(nodeRef, previousVersion, version, dryRun, false);
+                importVersion(nodeRef, item, previousVersion, version, dryRun, false);
                 previousVersion = version;
             }
         }
@@ -465,11 +497,13 @@ public final class BatchImporterImpl
     }
 
 
-    private final void importVersion(final NodeRef               nodeRef,
-                                     final BulkImportItemVersion previousVersion,
-                                     final BulkImportItemVersion version,
-                                     final boolean               dryRun,
-                                     final boolean               onlyOneVersion)
+    private final <T extends BulkImportItemVersion>
+    void importVersion(final NodeRef           nodeRef,
+                       final BulkImportItem<T> item,
+                       final T                 previousVersion,
+                       final T                 version,
+                       final DryRun<T>         dryRun,
+                       final boolean           onlyOneVersion)
         throws InterruptedException
     {
         Map<String, Serializable> versionProperties = new HashMap<>();
@@ -480,7 +514,7 @@ public final class BatchImporterImpl
             throw new IllegalStateException("version was null. This is indicative of a bug in the chosen import source.");
         }
 
-        importVersionContentAndMetadata(nodeRef, version, dryRun);
+        importVersionContentAndMetadata(nodeRef, item, version, dryRun);
 
         if (previousVersion != null && version.getVersionNumber() != null)
         {
@@ -509,57 +543,98 @@ public final class BatchImporterImpl
         else
         {
             if (trace(log)) trace(log, "Creating " + (isMajor ? "major" : "minor") + " version of node '" + String.valueOf(nodeRef) + "'.");
-            if (!dryRun) versionService.createVersion(nodeRef, versionProperties);
+            if (dryRun == null) versionService.createVersion(nodeRef, versionProperties);
         }
     }
 
 
-    private final void importVersionContentAndMetadata(final NodeRef               nodeRef,
-                                                       final BulkImportItemVersion version,
-                                                       final boolean               dryRun)
+    
+    private final <T extends BulkImportItemVersion> 
+    void importVersionContentAndMetadata(final NodeRef           nodeRef,
+                                         final BulkImportItem<T> item,
+                                         final T                 version,
+                                         final DryRun<T>         dryRun)
         throws InterruptedException
     {
         if (version.hasMetadata())
         {
-            importVersionMetadata(nodeRef, version, dryRun);
+            importVersionMetadata(nodeRef, item, version, dryRun);
         }
 
         if (version.hasContent())
         {
-            importVersionContent(nodeRef, version, dryRun);
+            importVersionContent(nodeRef, item, version, dryRun);
         }
     }
 
 
-    private final void importVersionMetadata(final NodeRef               nodeRef,
-                                             final BulkImportItemVersion version,
-                                             final boolean               dryRun)
+    private final <T extends BulkImportItemVersion>
+    void importVersionMetadata(final NodeRef           nodeRef,
+                               final BulkImportItem<T> item,
+                               final T                 version,
+                               final DryRun<T>         dryRun)
         throws InterruptedException
     {
         String                    type     = version.getType();
         Set<String>               aspects  = version.getAspects();
         Map<String, Serializable> metadata = version.getMetadata();
+        DictionaryService         dictionary = serviceRegistry.getDictionaryService();
 
+        TypeDefinition typeDef = null;
         if (type != null)
         {
             if (trace(log)) trace(log, "Setting type of '" + String.valueOf(nodeRef) + "' to '" + String.valueOf(type) + "'.");
-            if (!dryRun) nodeService.setType(nodeRef, createQName(serviceRegistry, type));
+            QName typeQname = createQName(serviceRegistry, type);
+            if (dryRun != null)
+            {
+            	typeDef = dictionary.getType(typeQname);
+            	if (typeDef == null)
+            	{
+            		dryRun.addVersionFault(version, String.format("Missing Type [%s]", type));
+            		throw new DryRunException(dryRun);
+            	}
+            }
+            else
+            {
+                nodeService.setType(nodeRef, typeQname);
+            }
         }
 
+        Map<QName, AspectDefinition> definedAspects = null;
         if (aspects != null)
         {
+            boolean missingAspects = false;
             for (final String aspect : aspects)
             {
                 if (importStatus.isStopping() || Thread.currentThread().isInterrupted()) throw new InterruptedException(Thread.currentThread().getName() + " was interrupted. Terminating early.");
 
                 if (trace(log)) trace(log, "Adding aspect '" + aspect + "' to '" + String.valueOf(nodeRef) + "'.");
-                if (dryRun)
+                QName aspectQname = createQName(serviceRegistry, aspect);
+                if (dryRun != null)
                 {
-                	// TODO: Perform dry run validations to check whether the aspect is valid (and
-                	// track it for the below metadata validations)
+                	if (definedAspects == null)
+                	{
+                		definedAspects = new LinkedHashMap<>();
+                		// Add the base type's aspects
+                		for (AspectDefinition def : typeDef.getDefaultAspects(true))
+                		{
+                			definedAspects.put(def.getName(), def);
+                		}
+                	}
+                	AspectDefinition def = dictionary.getAspect(aspectQname);
+                	if (def == null)
+                	{
+                		dryRun.addVersionFault(version, String.format("Missing Aspect [%s]", type));
+                		missingAspects = true;
+                	}
+                	if (!definedAspects.containsKey(def.getName())) definedAspects.put(def.getName(), def);
                 }
-                if (!dryRun) nodeService.addAspect(nodeRef, createQName(serviceRegistry, aspect), null);
+                else
+                {
+                	nodeService.addAspect(nodeRef, aspectQname, null);
+                }
             }
+            if (missingAspects) throw new DryRunException(dryRun);
         }
 
         if (version.hasMetadata())
@@ -577,18 +652,52 @@ public final class BatchImporterImpl
                 QName        keyQName = createQName(serviceRegistry, key);
                 Serializable value    = metadata.get(key);
 
-                if (dryRun)
-                {
-                	// TODO: Perform dry run validations of the metadata against the object's type and aspects
-                }
                 qNamedMetadata.put(keyQName, value);
+            }
+
+            if (dryRun != null)
+            {
+            	// Step 1: make a list of all the attributes in the aspects and object type
+            	Map<QName, PropertyDefinition> propDef = new HashMap<>();
+            	propDef.putAll(typeDef.getProperties());
+            	for (AspectDefinition aspect : definedAspects.values())
+            	{
+            		propDef.putAll(aspect.getProperties());
+            	}
+
+            	// Step 2: make sure all properties that are required are present, and that all property values
+            	// match any enabled constraints
+            	for (PropertyDefinition property : propDef.values())
+            	{
+            		final QName propertyName = property.getName();
+        			final Serializable value = qNamedMetadata.get(propertyName);
+            		if (property.isMandatory() && property.isMandatoryEnforced() && (value == null))
+        			{
+            			dryRun.addVersionFault(version, String.format("Missing mandatory property [%s]", property.getName()));
+            			continue;
+        			}
+            		
+            		// TODO: double-check if the value is compatible with the target type
+
+        			for (ConstraintDefinition constraint : property.getConstraints())
+        			{
+        				try
+        				{
+        					constraint.getConstraint().evaluate(value);
+        				}
+        				catch (ConstraintException e)
+        				{
+                			dryRun.addVersionFault(version, String.format("Constraint [%s] violation on property [%s]", constraint.getName(), property.getName()));
+        				}
+        			}
+            	}
             }
 
             try
             {
                 if (trace(log)) trace(log, "Adding the following properties to '" + String.valueOf(nodeRef) +
                                            "':\n" + Arrays.toString(qNamedMetadata.entrySet().toArray()));
-                if (!dryRun) nodeService.addProperties(nodeRef, qNamedMetadata);
+                if (dryRun == null) nodeService.addProperties(nodeRef, qNamedMetadata);
             }
             catch (final InvalidNodeRefException inre)
             {
@@ -610,9 +719,11 @@ public final class BatchImporterImpl
     }
 
 
-    private final void importVersionContent(final NodeRef               nodeRef,
-                                            final BulkImportItemVersion version,
-                                            final boolean               dryRun)
+    private final <T extends BulkImportItemVersion>
+    void importVersionContent(final NodeRef           nodeRef,
+                              final BulkImportItem<T> item,
+                              final T                 version,
+                              final DryRun<T>         dryRun)
         throws InterruptedException
     {
         if (version.hasContent())
@@ -621,21 +732,44 @@ public final class BatchImporterImpl
             {
                 if (trace(log)) trace(log, "Content for node '" + String.valueOf(nodeRef) + "' is in-place.");
 
-                if (!version.hasMetadata() ||
-                    version.getMetadata() == null ||
-                    (!version.getMetadata().containsKey(ContentModel.PROP_CONTENT.toPrefixString()) &&
-                     !version.getMetadata().containsKey(ContentModel.PROP_CONTENT.toString())))
+            	Map<String, Serializable> metadata = version.getMetadata();
+                if (!version.hasMetadata() || metadata == null ||
+                    (!metadata.containsKey(ContentModel.PROP_CONTENT.toPrefixString()) &&
+                     !metadata.containsKey(ContentModel.PROP_CONTENT.toString())))
                 {
+                	if (dryRun != null)
+                	{
+                		dryRun.addVersionFault(version, "Object with in-place content missing the content property");
+                		throw new DryRunException(dryRun);
+                	}
+
                     throw new IllegalStateException("The source system you selected is incorrectly implemented - it is reporting" +
                                                     " that content is in place for '" + version.getContentSource() +
                                                     "', but the metadata doesn't contain the '" + String.valueOf(ContentModel.PROP_CONTENT) +
                                                     "' property.");
                 }
 
-                if (dryRun)
+                if (dryRun != null)
                 {
-                	// TODO: Perform dry run validation that the in-place content exists and is at the location
-                	// that the PROP_CONTENT property says it is
+                	Serializable content = metadata.get(ContentModel.PROP_CONTENT.toPrefixString());
+                	if (content == null) content = metadata.get(ContentModel.PROP_CONTENT.toString());
+                	
+                	File contentFile = null;
+                	if (File.class.isInstance(content))
+                	{
+                		contentFile = File.class.cast(content);
+                	}
+                	else
+                	{
+                		contentFile = new File(content.toString());
+                	}
+
+                	contentFile = Tools.canonicalize(contentFile);
+            		if (!contentFile.exists() || !contentFile.isFile() || !contentFile.canRead())
+            		{
+            			dryRun.addVersionFault(version, String.format("In-line content at [%s] is either missing, not a file, or not readable", contentFile.getPath()));
+                		throw new DryRunException(dryRun);
+                	}
                 }
 
                 importStatus.incrementTargetCounter(BulkImportStatus.TARGET_COUNTER_IN_PLACE_CONTENT_LINKED);
@@ -644,9 +778,17 @@ public final class BatchImporterImpl
             {
                 if (trace(log)) trace(log, "Streaming content from '" + version.getContentSource() + "' into node '" + String.valueOf(nodeRef) + "'.");
 
-                if (dryRun)
+                if (dryRun != null)
                 {
-                	// TODO: Perform dry run validation that the content exists and is readable
+                	try
+                	{
+                		version.validateContent();
+                	}
+                	catch (Exception e)
+                	{
+                		dryRun.addVersionFault(version, e);
+                		throw new DryRunException(dryRun);
+                	}
                 }
                 else
                 {

@@ -21,6 +21,7 @@ package org.alfresco.extension.bulkimport.source.fs;
 
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.Serializable;
 import java.math.BigDecimal;
@@ -301,4 +302,11 @@ public final class FilesystemBulkImportItemVersion
         }
     }
 
+	@Override
+	public void validateContent() throws Exception
+	{
+		if (!contentReference.exists()) throw new FileNotFoundException(String.format("No file found at [%s]", contentReference.getAbsolutePath()));
+		if (!contentReference.isFile()) throw new FileNotFoundException(String.format("The object at [%s] is not a regular file", contentReference.getAbsolutePath()));
+		if (!contentReference.canRead()) throw new Exception(String.format("The file [%s] is not readable", contentReference.getAbsolutePath()));
+	}
 }

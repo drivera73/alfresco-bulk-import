@@ -96,6 +96,14 @@ public interface BulkImportItemVersion
      * @param writer The ContentWriter to use for this version <i>(will not be null)</i>.
      */
     void putContent(ContentWriter writer);
+
+    /**
+     * Called during dry runs, to make sure that the source content stream is, generally speaking, valid (i.e.
+     * it exists, is readable, etc.)
+     * 
+     * @throws Exception exception raised if the validation fails
+     */
+    void validateContent() throws Exception;
     
     /**
      * @return True if this version has metadata, false if not.

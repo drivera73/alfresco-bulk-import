@@ -479,6 +479,7 @@ public final class Scanner
             try
             {
                 batchImporter.importBatch(userId, target, batch, replaceExisting, dryRun);
+                // TODO: Scan through the dry run's faults
             }
             catch (final Throwable t)
             {
