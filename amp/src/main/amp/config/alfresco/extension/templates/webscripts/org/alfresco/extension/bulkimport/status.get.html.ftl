@@ -244,22 +244,21 @@
           <table border="1" cellspacing="0" cellpadding="1" width="80%">
             <thead>
               <tr>
-                <th colspan="3">Error Information</th>
+                <th colspan="3">Error Information (${importStatus.errorInfo?size} errors)</th>
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td>Timestamp</td>
-                <td>Object Path</td>
-                <td>Exception Dump</td>
-              </tr>
             [#list importStatus.errorInfo as error]
-              [#assign timeStamp = error.TimeStampStr]
-              [#assign error = error.ErrorStr]
+              [#assign timeStamp = error.timeStampStr]
+              [#assign exception = error.errorStr]
+              [#assign item = error.item]
               <tr>
-                <td>${timeStamp}</td>
-                <td>${key}</td>
-                <td><pre style="font-size:8pt" id="detailsLastException">${error}</pre></td>
+                <td><pre style="font-size:8pt" id="detailsLastException">
+Timestamp: [${timeStamp}]
+Item: [${item}]
+Exception Dump:
+${exception}
+                </pre></td>
               </tr>
             [/#list]
             </tbody>
