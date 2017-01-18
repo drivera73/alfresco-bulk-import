@@ -91,7 +91,6 @@ public class BulkExportServiceImpl implements BulkExportService {
 			boolean scapeExported, boolean exportVersions, boolean revisionHead, boolean useNodeCache,
 			boolean includeContent, boolean foldersOnly, String checksum, boolean includeMetadata,
 			List<String> folderProperties, List<String> documentProperties, WriteableBulkExportStatus bulkExportStatus) {
-		LOG.info("COLIN----" + truncatePath);
     	BulkExportWorkerThread bewt = new BulkExportWorkerThread(userId, source, batch, this.serviceRegistry, exportLocation, scapeExported, exportVersions, revisionHead, useNodeCache, includeContent, documentProperties, folderProperties, foldersOnly, checksum, truncatePath, bulkExportStatus);
     	executor.execute(bewt);
     }
