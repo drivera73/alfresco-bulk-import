@@ -265,7 +265,7 @@ public final class BatchImporterImpl
 		        List<String> itemParentPathElements = (itemParentPath == null || itemParentPath.length() == 0) ? null : Arrays.asList(itemParentPath.split(REGEX_SPLIT_PATH_ELEMENTS));
 
 		        // If the item is meant to be a direct child of the target folder, return it immediately
-		        if (itemParentPath == null || itemParentPathElements.isEmpty()) return target;
+		        if (itemParentPathElements == null || itemParentPathElements.isEmpty()) return target;
 
 		        if (debug(log)) debug(log, "Finding parent folder '" + itemParentPath + "'.");
 
