@@ -222,7 +222,7 @@ public final class Scanner
             {
                 // An unexpected exception occurred during scanning - log it and kill the import
                 error(log, "Bulk import from '" + source.getName() + "' failed.", t);
-                importStatus.unexpectedError(t);
+                importStatus.unexpectedError(source.getName(), t);
             }
 
             if (debug(log)) debug(log, "Forcibly shutting down import thread pool and awaiting shutdown...");
@@ -498,7 +498,7 @@ public final class Scanner
                 {
                     // An unexpected exception during import of the batch - log it and kill the entire import
                     error(log, "Bulk import from '" + source.getName() + "' failed.", t);
-                    importStatus.unexpectedError(t);
+                    importStatus.unexpectedError(source.getName(), t);
 
                     if (debug(log)) debug(log, "Shutting down import thread pool.");
                     importThreadPool.shutdownNow();

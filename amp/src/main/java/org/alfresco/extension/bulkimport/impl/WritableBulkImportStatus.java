@@ -45,7 +45,7 @@ public interface WritableBulkImportStatus
     void resumeRequested();
     void stopRequested();
     void importComplete();
-    void unexpectedError(Throwable t);
+    void unexpectedError(String itemPathOrNoderef, Throwable t);
 
     void setCurrentlyImporting(String name);
     void batchCompleted(Batch batch);

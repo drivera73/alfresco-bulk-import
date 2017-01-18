@@ -21,6 +21,11 @@
       <artifactId>alfresco-repository</artifactId>
       <scope>provided</scope>
     </dependency>
+    <dependency>
+      <groupId>com.armedia.commons</groupId>
+      <artifactId>utilities</artifactId>
+      <scope>compile</scope>
+    </dependency>
   </dependencies>
 
 </project>

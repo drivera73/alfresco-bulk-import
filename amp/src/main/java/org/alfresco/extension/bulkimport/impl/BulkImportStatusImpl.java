@@ -24,18 +24,25 @@ import static org.alfresco.extension.bulkimport.util.LogUtils.getHumanReadableDu
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.alfresco.extension.bulkimport.BulkImportErrorInfo;
 import org.alfresco.extension.bulkimport.source.BulkImportSource;
+import org.apache.commons.lang3.time.DateFormatUtils;
+
+import com.armedia.commons.utilities.Tools;
 
 
 /**
@@ -168,7 +175,7 @@ public class BulkImportStatusImpl
     private Long                         startNs               = null;
     private Long                         endScanNs             = null;
     private Long                         endNs                 = null;
-    private Throwable                    lastException         = null;
+    private Collection<BulkImportErrorInfo> errorInfo          = new ConcurrentLinkedQueue<>();
     private String                       currentlyScanning     = null;
     private String                       currentlyImporting    = null;
     private long                         batchWeight           = 0;
@@ -277,28 +284,7 @@ public class BulkImportStatusImpl
         return(getHumanReadableDuration(getEstimatedRemainingDurationInNs(), false));
     }
 
-    @Override public Throwable getLastException() { return(lastException); }
-
-    @Override
-    public String getLastExceptionAsString()
-    {
-        String result = null;
-
-        if (lastException != null)
-        {
-            StringWriter sw = new StringWriter();
-            PrintWriter  pw = new PrintWriter(sw, true);
-
-            lastException.printStackTrace(pw);
-
-            pw.flush();
-            sw.flush();
-
-            result = sw.toString();
-        }
-
-        return(result);
-    }
+    @Override public Collection<BulkImportErrorInfo> getErrorInfo() { return this.errorInfo; }
 
     @Override public long        getBatchWeight()                                                        { return(batchWeight); }
     @Override public int         getQueueSize()                                                          { return(threadPool == null ? 0 : threadPool.getQueueSize()); }
@@ -350,8 +336,6 @@ public class BulkImportStatusImpl
         this.currentlyScanning  = null;
         this.currentlyImporting = null;
 
-        this.lastException = null;
-
         this.endScanNs   = null;
         this.scanEndDate = null;
         this.endDate     = null;
@@ -382,7 +366,7 @@ public class BulkImportStatusImpl
         {
             this.state = ProcessingState.STOPPED;
         }
-        else if (getLastException() != null)
+        else if (!getErrorInfo().isEmpty())
         {
             this.state = ProcessingState.FAILED;
         }
@@ -394,7 +378,11 @@ public class BulkImportStatusImpl
         }
     }
 
-    @Override public void unexpectedError(final Throwable t) { this.lastException = t; }
+    @Override public void unexpectedError(String item, Throwable t)
+    {
+   		this.errorInfo.add(new BulkImportErrorInfo(item, t));
+    }
+    
     @Override public void setCurrentlyScanning(String name)  { this.currentlyScanning = name; }
     @Override public void setCurrentlyImporting(String name) { this.currentlyImporting = name; }
 

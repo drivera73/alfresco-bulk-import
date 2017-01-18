@@ -235,7 +235,7 @@
         </table>
 
 [#-- ERROR INFORMATION --]
-[#if importStatus.lastExceptionAsString??]
+[#if importStatus.errorInfo??]
         <div id="detailsErrorInformation" style="display:block">
 [#else]
         <div id="detailsErrorInformation" style="display:none">
@@ -244,14 +244,24 @@
           <table border="1" cellspacing="0" cellpadding="1" width="80%">
             <thead>
               <tr>
-                <th colspan="2">Error Information</th>
+                <th colspan="3">Error Information</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td>Exception:</td>
-                <td><pre style="font-size:8pt" id="detailsLastException">${importStatus.lastExceptionAsString!"n/a"}</pre></td>
+                <td>Timestamp</td>
+                <td>Object Path</td>
+                <td>Exception Dump</td>
               </tr>
+            [#list importStatus.errorInfo as error]
+              [#assign timeStamp = error.TimeStampStr]
+              [#assign error = error.ErrorStr]
+              <tr>
+                <td>${timeStamp}</td>
+                <td>${key}</td>
+                <td><pre style="font-size:8pt" id="detailsLastException">${error}</pre></td>
+              </tr>
+            [/#list]
             </tbody>
           </table>
         </div>

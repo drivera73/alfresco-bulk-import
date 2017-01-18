@@ -19,6 +19,7 @@
 
 package org.alfresco.extension.bulkimport;
 
+import java.util.Collection;
 import java.util.Date;
 import java.util.Map;
 import java.util.Set;
@@ -163,14 +164,9 @@ public interface BulkImportStatus
     String getEstimatedRemainingDuration();
 
     /**
-     * @return The last exception thrown by the import tool <i>(will be null if an import has never been run, or if an exception was not thrown)</i>.
+     * @return The errors that have been detected so far, in the approximate order they were reported.
      */
-    Throwable getLastException();
-
-    /**
-     * @return A human-readable textual representation of the last exception thrown by the import tool <i>(will be null if an import has never been run, or if an exception was not thrown)</i>.
-     */
-    String getLastExceptionAsString();
+    Collection<BulkImportErrorInfo> getErrorInfo();
 
     /**
      * @return The batch weight used for the last import. Result is undefined if <code>neverRun()</code> is true.

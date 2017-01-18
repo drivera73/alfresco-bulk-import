@@ -262,39 +262,31 @@ public final class BatchImporterImpl
 			@Override
 			public NodeRef get() throws ConcurrentException
 			{
-		        NodeRef result = null;
-
 		        List<String> itemParentPathElements = (itemParentPath == null || itemParentPath.length() == 0) ? null : Arrays.asList(itemParentPath.split(REGEX_SPLIT_PATH_ELEMENTS));
+
+		        // If the item is meant to be a direct child of the target folder, return it immediately
+		        if (itemParentPath == null || itemParentPathElements.isEmpty()) return target;
 
 		        if (debug(log)) debug(log, "Finding parent folder '" + itemParentPath + "'.");
 
-		        if (itemParentPathElements != null && itemParentPathElements.size() > 0)
-		        {
-		            FileInfo fileInfo = null;
+	            FileInfo fileInfo = null;
+	            try
+	            {
+	                //####TODO: I THINK THIS WILL FAIL IN THE PRESENCE OF CUSTOM NAMESPACES / PARENT ASSOC QNAMES!!!!
+	                fileInfo = serviceRegistry.getFileFolderService().resolveNamePath(target, itemParentPathElements, false);
+	            }
+	            catch (final FileNotFoundException fnfe)  // This should never be triggered due to the last parameter in the resolveNamePath call, but just in case
+	            {
+	                throw new OutOfOrderBatchException(itemParentPath, fnfe);
+	            }
 
-		            try
-		            {
-		                //####TODO: I THINK THIS WILL FAIL IN THE PRESENCE OF CUSTOM NAMESPACES / PARENT ASSOC QNAMES!!!!
-		                fileInfo = serviceRegistry.getFileFolderService().resolveNamePath(target, itemParentPathElements, false);
-		            }
-		            catch (final FileNotFoundException fnfe)  // This should never be triggered due to the last parameter in the resolveNamePath call, but just in case
-		            {
-		                throw new OutOfOrderBatchException(itemParentPath, fnfe);
-		            }
+	            // Out of order batch submission (child arrived before parent)
+	            if (fileInfo == null)
+	            {
+	                throw new OutOfOrderBatchException(itemParentPath);
+	            }
 
-		            // Out of order batch submission (child arrived before parent)
-		            if (fileInfo == null)
-		            {
-		                throw new OutOfOrderBatchException(itemParentPath);
-		            }
-
-		            result = fileInfo.getNodeRef();
-		        }
-
-		        // Make sure to always return something...
-		        if (result == null) result = target;
-
-		        return(result);
+	            return fileInfo.getNodeRef();
 			}
     	});
     }
@@ -328,8 +320,25 @@ public final class BatchImporterImpl
         String  parentAssoc      = item.getParentAssoc();
         QName   parentAssocQName = parentAssoc == null ? ContentModel.ASSOC_CONTAINS : createQName(serviceRegistry, parentAssoc);
 
-        NodeRef parentNodeRef = getParent(target, item);
+        NodeRef parentNodeRef = null;
+        try
+        {
+        	parentNodeRef = getParent(target, item);
+        }
+        catch (final OutOfOrderBatchException oobe)
+        {
+        	if (dryRun)
+        	{
+        		importStatus.unexpectedError(getRelativePath(item), oobe);
+        		parentNodeRef = DRY_RUN_CREATED_NODEREF;
+        	}
+        	else
+        	{
+        		throw oobe;
+        	}
+        }
 
+        // This should never happen, but cover for it anyway...
         if (parentNodeRef == null)
         {
             parentNodeRef = target;
