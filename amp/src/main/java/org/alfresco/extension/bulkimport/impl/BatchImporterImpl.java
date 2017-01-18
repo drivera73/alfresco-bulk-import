@@ -72,6 +72,7 @@ import org.alfresco.extension.bulkimport.DryRun;
 import org.alfresco.extension.bulkimport.DryRunException;
 import org.alfresco.extension.bulkimport.source.BulkImportItem;
 import org.alfresco.extension.bulkimport.source.BulkImportItemVersion;
+import org.alfresco.extension.bulkimport.source.BulkImportTools;
 
 import static org.alfresco.extension.bulkimport.util.Utils.*;
 import static org.alfresco.extension.bulkimport.util.LogUtils.*;
@@ -222,7 +223,7 @@ public final class BatchImporterImpl
                 catch (DryRunException e)
                 {
                 	// Catch this so we don't break the current batch
-                	importStatus.unexpectedError(getCompletePath(item), e);
+                	importStatus.unexpectedError(BulkImportTools.getCompleteTargetPath(item), e);
                 }
             }
         }
@@ -265,33 +266,20 @@ public final class BatchImporterImpl
         }
         catch (final OutOfOrderBatchException oobe)
         {
-    		importStatus.unexpectedError(getCompletePath(item), oobe);
+    		importStatus.unexpectedError(BulkImportTools.getCompleteTargetPath(item), oobe);
             throw oobe;
         }
         catch (final Exception e)
         {
-    		importStatus.unexpectedError(getCompletePath(item), e);
+    		importStatus.unexpectedError(BulkImportTools.getCompleteTargetPath(item), e);
             // Capture the item that failed, along with the exception
             throw new ItemImportException(item, e);
         }
     }
 
-    public static String getRelativePath(final BulkImportItem<?> item)
-    {
-    	String path = item.getAltRelativePathOfParent();
-    	if (path == null) path = item.getRelativePathOfParent();
-    	if (path == null) path = "";
-    	return path;
-    }
-
-    public static String getCompletePath(final BulkImportItem<?> item)
-    {
-    	return String.format("%s/%s", getRelativePath(item), item.getName());
-    }
-
     private NodeRef getParent(final NodeRef target, final BulkImportItem<?> item)
     {
-        final String itemParentPath = getRelativePath(item);
+        final String itemParentPath = BulkImportTools.getRelativeTargetPath(item);
     	return ConcurrentUtils.createIfAbsentUnchecked(this.parentCache, itemParentPath, new ConcurrentInitializer<NodeRef>()
     	{
 			@Override
@@ -329,14 +317,14 @@ public final class BatchImporterImpl
     private NodeRef cacheNode(final BulkImportItem<?> item, NodeRef nodeRef)
     {
     	if (nodeRef == null) return null;
-    	String itemPath = getRelativePath(item);
+    	String itemPath = BulkImportTools.getRelativeTargetPath(item);
     	if (itemPath == null || itemPath.length() == 0)
     	{
-    		itemPath = item.getName();
+    		itemPath = item.getTargetName();
     	}
     	else
     	{
-    		itemPath = String.format("%s/%s", itemPath, item.getName());
+    		itemPath = String.format("%s/%s", itemPath, item.getTargetName());
     	}
     	return ConcurrentUtils.putIfAbsent(this.parentCache, itemPath, nodeRef);
     }
@@ -348,7 +336,7 @@ public final class BatchImporterImpl
                                            final DryRun<T>         dryRun)
     {
         NodeRef result           = null;
-        String  nodeName         = item.getName();
+        String  nodeName         = item.getTargetName();
         String  nodeNamespace    = item.getNamespace();
         QName   nodeQName        = QName.createQName(nodeNamespace == null ? NamespaceService.CONTENT_MODEL_1_0_URI : nodeNamespace,
                                                      QName.createValidLocalName(nodeName));
@@ -365,7 +353,7 @@ public final class BatchImporterImpl
         {
         	if (dryRun != null)
         	{
-        		dryRun.addItemFault(String.format("Missing parent path [%s]", getRelativePath(item)));
+        		dryRun.addItemFault(String.format("Missing parent path [%s]", BulkImportTools.getRelativeTargetPath(item)));
         		parentNodeRef = DRY_RUN_CREATED_NODEREF;
         	}
         	else
@@ -411,7 +399,7 @@ public final class BatchImporterImpl
         }
         else
         {
-            if (info(log)) info(log, "Skipping '" + item.getName() + "' as it already exists in the repository and 'replace existing' is false.");
+            if (info(log)) info(log, "Skipping '" + item.getTargetName() + "' as it already exists in the repository and 'replace existing' is false.");
             result = null;
             importStatus.incrementTargetCounter(BulkImportStatus.TARGET_COUNTER_NODES_SKIPPED);
         }
@@ -430,14 +418,14 @@ public final class BatchImporterImpl
         {
             if (item.getVersions().size() > 1)
             {
-                warn(log, "Skipping versions for directory '" + item.getName() + "' - Alfresco does not support versioned spaces.");
+                warn(log, "Skipping versions for directory '" + item.getTargetName() + "' - Alfresco does not support versioned spaces.");
             }
 
             final T lastVersion = item.getVersions().last();
 
             if (lastVersion.hasContent())
             {
-                warn(log, "Skipping content for directory '" + item.getName() + "' - Alfresco doesn't support content in spaces.");
+                warn(log, "Skipping content for directory '" + item.getTargetName() + "' - Alfresco doesn't support content in spaces.");
             }
 
             // Import the last version's metadata only
@@ -445,10 +433,10 @@ public final class BatchImporterImpl
         }
         else
         {
-            if (trace(log)) trace(log, "No metadata to import for directory '" + item.getName() + "'.");
+            if (trace(log)) trace(log, "No metadata to import for directory '" + item.getTargetName() + "'.");
         }
 
-        if (trace(log)) trace(log, "Finished importing metadata for directory " + item.getName() + ".");
+        if (trace(log)) trace(log, "Finished importing metadata for directory " + item.getTargetName() + ".");
     }
 
 
@@ -462,7 +450,7 @@ public final class BatchImporterImpl
 
         if (numberOfVersions == 0)
         {
-            throw new IllegalStateException(item.getName() + " (being imported into " + String.valueOf(nodeRef) + ") has no versions.");
+            throw new IllegalStateException(item.getTargetName() + " (being imported into " + String.valueOf(nodeRef) + ") has no versions.");
         }
         else if (numberOfVersions == 1)
         {
@@ -479,7 +467,7 @@ public final class BatchImporterImpl
                 (!firstVersion.getAspects().contains(ContentModel.ASPECT_VERSIONABLE.toString()) &&
                  !firstVersion.getAspects().contains(ContentModel.ASPECT_VERSIONABLE.toPrefixString())))
             {
-                if (debug(log)) debug(log, item.getName() + " has versions but is missing the cm:versionable aspect. Adding it.");
+                if (debug(log)) debug(log, item.getTargetName() + " has versions but is missing the cm:versionable aspect. Adding it.");
                 if (dryRun == null) nodeService.addAspect(nodeRef, ContentModel.ASPECT_VERSIONABLE, null);
             }
 
@@ -492,7 +480,7 @@ public final class BatchImporterImpl
             }
         }
 
-        if (trace(log)) trace(log, "Finished importing " + numberOfVersions + " version" + (numberOfVersions == 1 ? "" : "s") + " of file " + item.getName() + ".");
+        if (trace(log)) trace(log, "Finished importing " + numberOfVersions + " version" + (numberOfVersions == 1 ? "" : "s") + " of file " + item.getTargetName() + ".");
     }
 
 

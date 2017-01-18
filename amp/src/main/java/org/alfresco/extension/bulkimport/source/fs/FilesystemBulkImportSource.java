@@ -307,7 +307,7 @@ public final class FilesystemBulkImportSource
                         }
                         else
                         {
-                            if (info(log)) info(log, "Directory " + directoryItem.getName() + " is metadata only - scan will be skipped.");
+                            if (info(log)) info(log, "Directory " + directoryItem.getTargetName() + " is metadata only - scan will be skipped.");
                         }
                     }
                 }

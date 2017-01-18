@@ -1,5 +1,7 @@
 package org.alfresco.extension.bulkimport;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -12,6 +14,8 @@ import java.util.Set;
 
 import org.alfresco.extension.bulkimport.source.BulkImportItem;
 import org.alfresco.extension.bulkimport.source.BulkImportItemVersion;
+import org.alfresco.extension.bulkimport.source.BulkImportTools;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.time.DateFormatUtils;
 
 import com.armedia.commons.utilities.Tools;
@@ -45,11 +49,8 @@ public class DryRun<V extends BulkImportItemVersion> {
 	}
 
 	private final BulkImportItem<V> item;
-	
 	private final List<Fault> itemFaults = new ArrayList<Fault>();
-	
 	private final Map<BigDecimal, List<Fault>> versionFaults = new LinkedHashMap<>();
-	
 	private String errorReport = null;
 
 	public DryRun(BulkImportItem<V> item)
@@ -110,8 +111,53 @@ public class DryRun<V extends BulkImportItemVersion> {
 		return Collections.unmodifiableCollection(this.versionFaults.get(version));
 	}
 	
-	public String generateErrorReport()
+	private String generateErrorReport()
 	{
-		return null;
+		if (!hasFaults())
+		{
+			return "No Faults";
+		}
+
+		StringWriter sw = new StringWriter();
+		PrintWriter pw = new PrintWriter(sw);
+
+		pw.printf("Source Path: [%s]%n", BulkImportTools.getCompleteSourcePath(this.item));
+		pw.printf("Target Path: [%s]%n", BulkImportTools.getCompleteTargetPath(this.item));
+		pw.printf("%n");
+		if (!this.itemFaults.isEmpty())
+		{
+			pw.printf("General Faults:%n");
+			pw.printf("%s%n", StringUtils.repeat('=', 40));
+			for (Fault f : this.itemFaults)
+			{
+				pw.printf("\t%s\t%n", f.getTimeStampStr(), f.getInfo());
+			}
+			pw.printf("%s%n%n", StringUtils.repeat('=', 40));
+		}
+		if (!versionFaults.isEmpty())
+		{
+			pw.printf("Version Faults:%n");
+			pw.printf("%s%n", StringUtils.repeat('=', 40));
+			for (BigDecimal v : versionFaults.keySet())
+			{
+				pw.printf("%n\tVersion %s:%n", v);
+				pw.printf("\t%s%n", StringUtils.repeat('=', 30));
+				for (Fault f : versionFaults.get(v))
+				{
+					pw.printf("\t\t%s\t%n", f.getTimeStampStr(), f.getInfo());
+				}
+				pw.printf("\t%s%n", StringUtils.repeat('=', 30));
+			}
+		}
+		return sw.toString();
+	}
+
+	public String getErrorReport()
+	{
+		if (this.errorReport == null)
+		{
+			this.errorReport = generateErrorReport();
+		}
+		return this.errorReport;
 	}
 }

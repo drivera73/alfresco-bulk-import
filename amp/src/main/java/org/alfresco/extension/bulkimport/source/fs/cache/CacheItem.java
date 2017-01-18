@@ -23,7 +23,7 @@ import org.apache.commons.logging.Log;
 @XmlAccessorType(XmlAccessType.FIELD)
 @XmlType(propOrder =
 	{
-		"directory", "name", "fsRelativePath", "relativePath", "versions"
+		"directory", "sourcePath", "sourceName", "targetPath", "targetName", "versions"
 	}
 )
 @XmlRootElement(name = "item")
@@ -32,14 +32,17 @@ public class CacheItem
 	@XmlElement(name = "directory", required = true)
 	protected boolean directory;
 
-	@XmlElement(name = "name", required = true)
-	protected String name;
+	@XmlElement(name = "sourcePath", required = true)
+	protected String sourcePath;
 
-	@XmlElement(name = "fsRelativePath", required = true)
-	protected String fsRelativePath;
+	@XmlElement(name = "sourceName", required = true)
+	protected String sourceName;
 
-	@XmlElement(name = "relativePath", required = false)
-	protected String relativePath;
+	@XmlElement(name = "targetPath", required = false)
+	protected String targetPath;
+
+	@XmlElement(name = "targetName", required = true)
+	protected String targetName;
 
 	@XmlElementWrapper(name = "versions", required = true)
 	@XmlElement(name = "version", required = true)
@@ -60,7 +63,7 @@ public class CacheItem
 			}
 		}
 
-		return new FilesystemBulkImportItem(name, directory, fsRelativePath, relativePath, versions);
+		return new FilesystemBulkImportItem(sourceName, targetName, directory, sourcePath, targetPath, versions);
 	}
 
 	public static File canonicalize(File f, Log log)
@@ -91,7 +94,7 @@ public class CacheItem
 
 	@Override
 	public String toString() {
-		return String.format("CacheItem [directory=%s, name=%s, fsRelativePath=%s, relativePath=%s, versions=%s]",
-			directory, name, fsRelativePath, relativePath, versions);
+		return String.format("CacheItem [directory=%s, sourcePath=%s, sourceName=%s, targetPath=%s, targetName=%s, versions=%s]",
+			directory, sourcePath, sourceName, targetPath, targetName, versions);
 	}
 }

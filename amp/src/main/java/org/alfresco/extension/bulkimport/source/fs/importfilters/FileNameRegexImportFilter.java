@@ -55,7 +55,7 @@ public class FileNameRegexImportFilter
     @Override
     public boolean shouldFilter(final FilesystemBulkImportItem item)
     {
-        return(pattern.matcher(item.getName()).matches());
+        return(pattern.matcher(item.getTargetName()).matches());
     }
 
 }

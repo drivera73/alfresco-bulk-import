@@ -23,6 +23,7 @@ import java.util.NavigableSet;
 
 import org.alfresco.model.ContentModel;
 import org.alfresco.service.namespace.NamespaceService;
+import org.apache.commons.lang3.StringUtils;
 
 
 /**
@@ -35,22 +36,28 @@ import org.alfresco.service.namespace.NamespaceService;
 public abstract class AbstractBulkImportItem<T extends BulkImportItemVersion>
     implements BulkImportItem<T>
 {
-    protected final String          name;
     protected final boolean         isDirectory;
-    protected final String          relativePathOfParent;
-    protected final String          altRelativePathOfParent;
+    protected final String          targetPathOfParent;
+    protected final String          targetName;
+    protected final String          sourcePathOfParent;
+    protected final String          sourceName;
     protected final NavigableSet<T> versions;
 
 
-    protected AbstractBulkImportItem(final String          name,
+    protected AbstractBulkImportItem(final String          sourceName,
+                                     final String          targetName,
                                      final boolean         isDirectory,
-                                     final String          relativePathOfParent,
-                                     final String          altRelativePathOfParent,
+                                     final String          targetPathOfParent,
+                                     final String          sourcePathOfParent,
                                      final NavigableSet<T> versions)
     {
-        if (name == null || name.trim().length() == 0)
+        if (StringUtils.isBlank(sourceName))
         {
-            throw new IllegalArgumentException("name cannot be null, empty or blank.");
+            throw new IllegalArgumentException("source name cannot be null, empty or blank.");
+        }
+        if (StringUtils.isBlank(targetName))
+        {
+            throw new IllegalArgumentException("target name cannot be null, empty or blank.");
         }
 
         if (versions == null || versions.size() <= 0)
@@ -58,21 +65,12 @@ public abstract class AbstractBulkImportItem<T extends BulkImportItemVersion>
             throw new IllegalArgumentException("versions cannot be null or empty.");
         }
 
-        this.name                 = name;
         this.isDirectory          = isDirectory;
-        this.relativePathOfParent = relativePathOfParent;
-        this.altRelativePathOfParent = altRelativePathOfParent;
+        this.sourcePathOfParent   = sourcePathOfParent;
+        this.sourceName           = sourceName;
+        this.targetPathOfParent   = targetPathOfParent;
+        this.targetName           = targetName;
         this.versions             = versions;
-    }
-
-
-    /**
-     * @see org.alfresco.extension.bulkimport.source.BulkImportItem#getName()
-     */
-    @Override
-    public String getName()
-    {
-        return(name);
     }
 
 
@@ -107,23 +105,41 @@ public abstract class AbstractBulkImportItem<T extends BulkImportItemVersion>
 
 
     /**
-     * @see org.alfresco.extension.bulkimport.source.BulkImportItem#getRelativePathOfParent()
+     * @see org.alfresco.extension.bulkimport.source.BulkImportItem#getSourceRelativePathOfParent()
      */
     @Override
-    public String getRelativePathOfParent()
+    public String getSourceRelativePathOfParent()
     {
-        return(relativePathOfParent);
+        return(sourcePathOfParent);
     }
 
 
     /**
-     * @see org.alfresco.extension.bulkimport.source.BulkImportItem#getAltRelativePathOfParent()
+     * @see org.alfresco.extension.bulkimport.source.BulkImportItem#getSourceName()
      */
     @Override
-    public String getAltRelativePathOfParent()
+	public String getSourceName() {
+		return sourceName;
+	}
+
+
+    /**
+     * @see org.alfresco.extension.bulkimport.source.BulkImportItem#getTargetRelativePathOfParent()
+     */
+    @Override
+    public String getTargetRelativePathOfParent()
     {
-        return(altRelativePathOfParent);
+        return(targetPathOfParent);
     }
+
+
+	/**
+     * @see org.alfresco.extension.bulkimport.source.BulkImportItem#getTargetName()
+     */
+    @Override
+    public String getTargetName() {
+		return targetName;
+	}
 
 
     /**
@@ -234,7 +250,7 @@ public abstract class AbstractBulkImportItem<T extends BulkImportItemVersion>
         final int             versionCount = numberOfVersions();
         final NavigableSet<T> versions     = getVersions();
 
-        result.append(getName() + " (" + versionCount + " version" + (versionCount != 1 ? "s)" : ")") + ":");
+        result.append(getTargetName() + " (" + versionCount + " version" + (versionCount != 1 ? "s)" : ")") + ":");
 
         if (versions != null)
         {

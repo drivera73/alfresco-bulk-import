@@ -43,14 +43,24 @@ import java.util.NavigableSet;
 public interface BulkImportItem<T extends BulkImportItemVersion>
 {
     /**
-     * @return The path (delimited by '/' characters), relative to the root of the source, of this item's parent <i>(null indicates that the parent is the root of the source)</i>.
+     * @return The path (delimited by '/' characters), relative to the root of the source, of this item's parent <i>(null or empty indicates that the parent is the root of the source)</i>.
      */
-    String getRelativePathOfParent();
+    String getSourceRelativePathOfParent();
 
     /**
-     * @return The path (delimited by '/' characters), relative to the root of the source, of this item's parent <i>(null indicates that the parent is the root of the source)</i>.
+     * @return The name of the item as it is on the source storage <i>(must not be null, empty or blank)</i>.
      */
-    String getAltRelativePathOfParent();
+    String getSourceName();
+
+    /**
+     * @return The path (delimited by '/' characters), relative to the root of the target, of this item's parent <i>(null or empty indicates that the parent is the root of the target)</i>.
+     */
+    String getTargetRelativePathOfParent();
+
+    /**
+     * @return The name of the item as it is / should be in the repository <i>(must not be null, empty or blank, and must meet Alfresco's naming rules for nodes)</i>.
+     */
+    String getTargetName();
 
     /**
      * @return The parent association type to use for this item <i>(may be null)</i>.
@@ -61,11 +71,6 @@ public interface BulkImportItem<T extends BulkImportItemVersion>
      * @return The namespace for the item <i>(may be null)</i>.
      */
     String getNamespace();
-
-    /**
-     * @return The name of the item as it is / should be in the repository <i>(must not be null, empty or blank, and must meet Alfresco's naming rules for nodes)</i>.
-     */
-    String getName();
 
     /**
      * @return True if this item is a directory (cm:folder or descendent type), false otherwise.

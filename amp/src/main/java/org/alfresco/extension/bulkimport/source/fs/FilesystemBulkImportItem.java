@@ -39,17 +39,14 @@ public final class FilesystemBulkImportItem
 {
     final static Log log = LogFactory.getLog(FilesystemBulkImportItem.class);
 
-    public FilesystemBulkImportItem(final String                          name,
+    public FilesystemBulkImportItem(final String                          sourceName,
+    	                            final String                          targetName,
                                     final boolean                         isDirectory,
                                     final String                          relativePathOfParent,
                                     final String                          altRelativePathOfParent,
                                     final NavigableSet<FilesystemBulkImportItemVersion> versions)
     {
-        super(name,
-              isDirectory,
-              relativePathOfParent,
-              altRelativePathOfParent,
-              versions);
+        super(sourceName, targetName,  isDirectory, relativePathOfParent, altRelativePathOfParent, versions);
     }
 
 }

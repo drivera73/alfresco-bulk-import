@@ -67,7 +67,7 @@ public class BulkImportErrorInfo
 	{
 		if (DryRunException.class.isInstance(this.error))
 		{
-			return DryRunException.class.cast(error).getDryRun().generateErrorReport();
+			return DryRunException.class.cast(error).getDryRun().getErrorReport();
 		}
 		return Tools.dumpStackTrace(error);
 	}

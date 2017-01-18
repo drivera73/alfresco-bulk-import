@@ -331,14 +331,16 @@ public final class DirectoryAnalyser
                 if (importStatus.isStopping() || Thread.currentThread().isInterrupted()) throw new InterruptedException(Thread.currentThread().getName() + " was interrupted. Terminating early.");
 
                 final SortedMap<BigDecimal,Pair<File,File>>         itemVersions = categorisedFiles.get(parentName);
+                final Pair<File, File>                              lastVersion  = itemVersions.get(itemVersions.lastKey());
+                final File                                          sourceFile   = (lastVersion.getFirst() != null ? lastVersion.getFirst() : lastVersion.getSecond());
                 final NavigableSet<FilesystemBulkImportItemVersion> versions     = constructImportItemVersions(itemVersions);
                 final boolean                                       isDirectory  = versions.last().isDirectory();
-                final FilesystemBulkImportItem                      item         = new FilesystemBulkImportItem(getNameProperty(versions.last(), parentName),
+                final FilesystemBulkImportItem                      item         = new FilesystemBulkImportItem(sourceFile.getName(),
+                                                                                                                getNameProperty(versions.last(), parentName),
                                                                                                                 isDirectory,
                                                                                                                 sourceRelativeParentDirectory,
                                                                                                                 altSourceRelativeParentDirectory,
                                                                                                                 versions);
-
                 if (isDirectory)
                 {
                     directoryItems.add(item);

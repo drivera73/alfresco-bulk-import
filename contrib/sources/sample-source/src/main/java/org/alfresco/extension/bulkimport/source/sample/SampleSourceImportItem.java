@@ -37,7 +37,7 @@ public final class SampleSourceImportItem extends AbstractBulkImportItem<SampleS
 
 	public SampleSourceImportItem(final String parentPath, final String name, final boolean isDirectory,
 		final int numVersions) {
-		super(name, isDirectory, parentPath, parentPath,
+		super(name, name, isDirectory, parentPath, parentPath,
 			SampleSourceImportItem.synthesiseVersions(name, isDirectory, numVersions));
 	}
 
