@@ -21,6 +21,7 @@ import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 
+import org.alfresco.service.ServiceRegistry;
 import org.alfresco.service.cmr.repository.NodeRef;
 import org.alfresco.service.namespace.QName;
 
@@ -190,9 +191,13 @@ public interface AlfrescoExportDao
     
     public void setTruncatePath(boolean truncatePath);
     
+    public boolean getTruncatePath();
+    
     public void setExportNodeRef(NodeRef exportNodeRef);
     
     public void setFolderProperties(List<QName> documentProperties);
+    
+    public ServiceRegistry getServiceRegistry();
 }
 
 

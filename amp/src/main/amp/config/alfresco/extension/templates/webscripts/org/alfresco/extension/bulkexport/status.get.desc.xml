@@ -1,0 +1,11 @@
+<webscript>
+    <shortname>Bulk Export Status</shortname>
+    <description>Bulk Export Status</description>
+    <url>/bulk/export/status</url>
+    <authentication>admin</authentication>
+    <transaction allow="readonly">required</transaction>
+    <family>Bulk Export</family>
+    <cache>
+       <never>true</never>
+    </cache>
+</webscript>

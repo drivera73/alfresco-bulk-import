@@ -21,9 +21,12 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import org.alfresco.extension.bulkexport.BulkExportStatus;
+import org.alfresco.extension.bulkexport.WriteableBulkExportStatus;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -31,7 +34,6 @@ import org.apache.tika.io.IOUtils;
 import org.springframework.extensions.webscripts.WebScriptResponse;
 
 import com.armedia.caliente.tools.xml.XmlProperties;
-
 
 
 /**
@@ -44,11 +46,19 @@ public class FileFolder
 {
 	Log log = LogFactory.getLog(FileFolder.class);
 
+	public static enum FileFolderStatus {
+	    OK,
+	    FAIL,
+	    SKIPPED,
+	    UNKNOWN;
+	}
+	
 	/** {@link String} interface to web page for displaying messages
 	 *  server
 	 */
 	private WebScriptResponse ui;
-
+	List<String> errorLog = new ArrayList<String>();
+	
 	/** {@link String} path to export data location in Alfresco
 	 *  server
 	 */
@@ -72,6 +82,14 @@ public class FileFolder
 		this.ui = ui;
 	}
 
+	public FileFolder(String basePath, boolean scapeExported)
+	{
+		log.debug("debug enabled for FileFolder");
+		this.basePath = basePath;
+		this.scapeExported = scapeExported;
+		this.ui = null;
+	}
+	
 	public String basePath()
 	{
 		return this.basePath;
@@ -82,11 +100,11 @@ public class FileFolder
 	 *
 	 * @param path Path of Alfresco folder
 	 */
-	public void createFolder(String path) throws Exception
+	public FileFolderStatus createFolder(String path) throws Exception
 	{
 		path = this.basePath + path;
 		log.debug("createFolder path to create : " + path);
-
+		FileFolderStatus ok = FileFolderStatus.UNKNOWN;
 		try
 		{
 			File dir = new File(path);
@@ -99,14 +117,26 @@ public class FileFolder
 				else
 				{
 					log.debug("createFolder path : " + path);
+					ok = FileFolderStatus.OK;
 				}
 			}
-		}
-		catch (Exception e)
-		{
+		} catch (SecurityException e) {
+			errorLog.add(e.toString());
 			e.printStackTrace();
-			ui.getWriter().write(e.toString());
+			if (this.ui != null) {
+				ui.getWriter().write(e.toString());
+			}
+			ok = FileFolderStatus.FAIL;
+		} catch (Exception e)
+		{
+			errorLog.add(e.toString());
+			e.printStackTrace();
+			if (this.ui != null) {
+				ui.getWriter().write(e.toString());
+			}
+			ok = FileFolderStatus.FAIL;
 		}
+		return ok;
 	}
 
 
@@ -142,8 +172,11 @@ public class FileFolder
 		}
 		catch (Exception e)
 		{
+			errorLog.add(e.toString());
 			e.printStackTrace();
-			ui.getWriter().write(e.toString());
+			if (this.ui != null) {
+				ui.getWriter().write(e.toString());
+			}
 		}
 		log.debug("createFile filepath done");
 	}
@@ -242,8 +275,11 @@ public class FileFolder
 		}
 		catch (Exception e)
 		{
+			errorLog.add(e.toString());
 			e.printStackTrace();
-			ui.getWriter().write(e.toString());
+			if (this.ui != null) {
+				ui.getWriter().write(e.toString());
+			}
 		}
 
 		return filePath;
@@ -259,14 +295,15 @@ public class FileFolder
 	 * @param filePath The path of file
 	 * @throws Exception
 	 */
-	public void insertFileProperties(String type, List<String> aspects, Map<String, String> properties, String filePath, String revision) throws Exception
+	public FileFolderStatus insertFileProperties(String type, List<String> aspects, Map<String, String> properties, String filePath, String revision) throws Exception
 	{
 		filePath = this.basePath + filePath;
-
+		FileFolderStatus ok = FileFolderStatus.UNKNOWN;
 		if (revision == null) {
 			if(this.isFileExist(filePath) && this.isFileExist(filePath + ".metadata.properties.xml") && this.scapeExported)
 			{
-				return;
+				log.info("Skipping " + filePath + ".metadata.properties.xml: Already exists");
+				return FileFolderStatus.SKIPPED;
 			}
 		} else {
 			// check if revision version exists
@@ -276,7 +313,8 @@ public class FileFolder
 			}
 			if(this.isFileExist(filePath) && this.isFileExist(filePath + ".metadata.properties.xml.v" + revision) && this.scapeExported)
 			{
-				return;
+				log.info("Skipping " + filePath + ".metadata.properties.xml: Already exists");
+				return FileFolderStatus.SKIPPED;
 			}
 		}
 
@@ -294,6 +332,7 @@ public class FileFolder
 			try
 			{
 				XmlProperties.saveToXML(properties, out, null);
+				ok = FileFolderStatus.OK;
 			}
 			finally
 			{
@@ -303,7 +342,9 @@ public class FileFolder
 		catch (Exception e)
 		{
 			e.printStackTrace();
+			ok = FileFolderStatus.FAIL;
 		}
+		return ok;
 	}
 
 	/**
@@ -322,5 +363,123 @@ public class FileFolder
 		}
 
 		return false;
+	}
+	
+	public List<String> getErrorLog() {
+		return errorLog;
+	}
+	
+	public static void updateFolderCounters(FileFolderStatus ffs, WriteableBulkExportStatus bulkExportStatus) {
+		switch (ffs) {
+        case OK:
+        	bulkExportStatus.incrementTargetCounter(BulkExportStatus.TARGET_COUNTER_TOTAL_FOLDERS_COMPLETE);
+        	break;
+        case FAIL:
+        	bulkExportStatus.incrementTargetCounter(BulkExportStatus.TARGET_COUNTER_TOTAL_FOLDERS_ERRORS);
+        	break;
+        case SKIPPED:
+        	bulkExportStatus.incrementTargetCounter(BulkExportStatus.TARGET_COUNTER_TOTAL_FOLDERS_SKIPPED);
+        	break;
+        case UNKNOWN:
+        	bulkExportStatus.incrementTargetCounter(BulkExportStatus.TARGET_COUNTER_TOTAL_FOLDERS_UNKNOWN);
+        	break;
+        default:
+        	break;	
+        }
+	}
+	
+	public static void updateFolderMetadataCounters(FileFolderStatus ffs, WriteableBulkExportStatus bulkExportStatus) {
+		switch (ffs) {
+        case OK:
+        	bulkExportStatus.incrementTargetCounter(BulkExportStatus.TARGET_COUNTER_TOTAL_FOLDERS_METADATA_COMPLETE);
+        	break;
+        case FAIL:
+        	bulkExportStatus.incrementTargetCounter(BulkExportStatus.TARGET_COUNTER_TOTAL_FOLDERS_METADATA_ERRORS);
+        	break;
+        case SKIPPED:
+        	bulkExportStatus.incrementTargetCounter(BulkExportStatus.TARGET_COUNTER_TOTAL_FOLDERS_METADATA_SKIPPED);
+        	break;
+        case UNKNOWN:
+        	bulkExportStatus.incrementTargetCounter(BulkExportStatus.TARGET_COUNTER_TOTAL_FOLDERS_METADATA_UNKNOWN);
+        	break;
+        default:
+        	break;	
+        }
+	}
+	
+	public static void updateDocumentCounters(FileFolderStatus ffs, WriteableBulkExportStatus bulkExportStatus) {
+		switch (ffs) {
+        case OK:
+        	bulkExportStatus.incrementTargetCounter(BulkExportStatus.TARGET_COUNTER_TOTAL_DOCUMENTS_COMPLETE);
+        	break;
+        case FAIL:
+        	bulkExportStatus.incrementTargetCounter(BulkExportStatus.TARGET_COUNTER_TOTAL_DOCUMENTS_ERRORS);
+        	break;
+        case SKIPPED:
+        	bulkExportStatus.incrementTargetCounter(BulkExportStatus.TARGET_COUNTER_TOTAL_DOCUMENTS_SKIPPED);
+        	break;
+        case UNKNOWN:
+        	bulkExportStatus.incrementTargetCounter(BulkExportStatus.TARGET_COUNTER_TOTAL_DOCUMENTS_UNKNOWN);
+        	break;
+        default:
+        	break;	
+        }
+	}
+	
+	public static void updateDocumentMetadataCounters(FileFolderStatus ffs, WriteableBulkExportStatus bulkExportStatus) {
+		switch (ffs) {
+        case OK:
+        	bulkExportStatus.incrementTargetCounter(BulkExportStatus.TARGET_COUNTER_TOTAL_DOCUMENTS_METADATA_COMPLETE);
+        	break;
+        case FAIL:
+        	bulkExportStatus.incrementTargetCounter(BulkExportStatus.TARGET_COUNTER_TOTAL_DOCUMENTS_METADATA_ERRORS);
+        	break;
+        case SKIPPED:
+        	bulkExportStatus.incrementTargetCounter(BulkExportStatus.TARGET_COUNTER_TOTAL_DOCUMENTS_METADATA_SKIPPED);
+        	break;
+        case UNKNOWN:
+        	bulkExportStatus.incrementTargetCounter(BulkExportStatus.TARGET_COUNTER_TOTAL_DOCUMENTS_METADATA_UNKNOWN);
+        	break;
+        default:
+        	break;	
+        }
+	}
+	
+	public static void updateDocumentVersionCounters(FileFolderStatus ffs, WriteableBulkExportStatus bulkExportStatus) {
+		switch (ffs) {
+        case OK:
+        	bulkExportStatus.incrementTargetCounter(BulkExportStatus.TARGET_COUNTER_TOTAL_DOCUMENTS_VERSION_COMPLETE);
+        	break;
+        case FAIL:
+        	bulkExportStatus.incrementTargetCounter(BulkExportStatus.TARGET_COUNTER_TOTAL_DOCUMENTS_VERSION_ERRORS);
+        	break;
+        case SKIPPED:
+        	bulkExportStatus.incrementTargetCounter(BulkExportStatus.TARGET_COUNTER_TOTAL_DOCUMENTS_VERSION_SKIPPED);
+        	break;
+        case UNKNOWN:
+        	bulkExportStatus.incrementTargetCounter(BulkExportStatus.TARGET_COUNTER_TOTAL_DOCUMENTS_VERSION_UNKNOWN);
+        	break;
+        default:
+        	break;	
+        }
+	}
+	
+	public static void updateDocumentVersionMetadataCounters(FileFolderStatus ffs, WriteableBulkExportStatus bulkExportStatus) {
+		switch (ffs) {
+        case OK:
+        	bulkExportStatus.incrementTargetCounter(BulkExportStatus.TARGET_COUNTER_TOTAL_DOCUMENTS_VERSION_METADATA_COMPLETE);
+        	break;
+        case FAIL:
+        	bulkExportStatus.incrementTargetCounter(BulkExportStatus.TARGET_COUNTER_TOTAL_DOCUMENTS_VERSION_METADATA_ERRORS);
+        	break;
+        case SKIPPED:
+        	bulkExportStatus.incrementTargetCounter(BulkExportStatus.TARGET_COUNTER_TOTAL_DOCUMENTS_VERSION_METADATA_SKIPPED);
+        	break;
+        case UNKNOWN:
+        	bulkExportStatus.incrementTargetCounter(BulkExportStatus.TARGET_COUNTER_TOTAL_DOCUMENTS_VERSION_METADATA_UNKNOWN);
+        	break;
+        default:
+        	break;	
+        }
 	}
 }
