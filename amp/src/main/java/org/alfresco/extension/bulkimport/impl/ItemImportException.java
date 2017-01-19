@@ -21,6 +21,7 @@
 package org.alfresco.extension.bulkimport.impl;
 
 import org.alfresco.extension.bulkimport.source.BulkImportItem;
+import org.alfresco.extension.bulkimport.source.BulkImportItemContainer;
 
 /**
  * This simple exception adds the failed item to the stack.
@@ -29,7 +30,7 @@ import org.alfresco.extension.bulkimport.source.BulkImportItem;
  *
  */
 public class ItemImportException
-    extends RuntimeException
+    extends RuntimeException implements BulkImportItemContainer
 {
     private static final long serialVersionUID = -8885681046650475606L;
     
@@ -48,7 +49,8 @@ public class ItemImportException
     /**
      * @return The <code>BulkImportItem</code> that failed <i>(may be null)</i>.
      */
-    public BulkImportItem<?> getFailedItem()
+    @Override
+    public BulkImportItem<?> getItem()
     {
         return(failedItem);
     }
