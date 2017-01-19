@@ -44,6 +44,7 @@ public interface BatchImporter
      * @param target                The nodeRef of the target space in which to perform the import <i>(must not be null, and the target space must exist and be writeable)</i>.
      * @param batch                 The batch to import <i>(may be null or empty, though both of those states result in nothing happening)</i>.
      * @param replaceExisting       Flag indicating whether existing nodes are to be replaced or skipped.
+     * @param pessimistic           Flag indicating whether or not an error should cause a batch failure ({@code true} = fail the batch if any errors happen).
      * @param dryRun                Flag indicating that the import should be a "dry run" (nothing written to the repository).
      * @throws InterruptedException If the batch is interrupted during processing.
      */
@@ -51,6 +52,7 @@ public interface BatchImporter
                             NodeRef target,
                             Batch<?>   batch,
                             boolean replaceExisting,
+                            boolean pessimistic,
                             boolean dryRun)
         throws InterruptedException;
 }

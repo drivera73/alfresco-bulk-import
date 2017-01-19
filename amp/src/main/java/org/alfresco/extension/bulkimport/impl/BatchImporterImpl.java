@@ -132,13 +132,14 @@ public final class BatchImporterImpl
     }
 
     /**
-     * @see org.alfresco.extension.bulkimport.impl.BatchImporter#importBatch(String, NodeRef, Batch, boolean, boolean)
+     * @see org.alfresco.extension.bulkimport.impl.BatchImporter#importBatch(String, NodeRef, Batch, boolean, boolean, boolean)
      */
     @Override
     public final void importBatch(final String  userId,
                                   final NodeRef  target,
                                   final Batch<?> batch,
                                   final boolean  replaceExisting,
+                                  final boolean  pessimistic,
                                   final boolean  dryRun)
         throws InterruptedException,
                OutOfOrderBatchException
@@ -157,11 +158,11 @@ public final class BatchImporterImpl
             {
             	if (dryRun)
             	{
-            		importBatchImpl(target, batch, replaceExisting, dryRun);
+            		importBatchImpl(target, batch, replaceExisting, false, dryRun);
             	}
             	else
             	{
-                    importBatchInTxn(target, batch, replaceExisting, dryRun);
+                    importBatchInTxn(target, batch, replaceExisting, pessimistic, dryRun);
             	}
                 return(null);
             }
@@ -179,6 +180,7 @@ public final class BatchImporterImpl
     void importBatchInTxn(final NodeRef  target,
                           final Batch<T> batch,
                           final boolean  replaceExisting,
+                          final boolean  pessimistic,
                           final boolean  dryRun)
         throws InterruptedException,
                OutOfOrderBatchException
@@ -194,7 +196,7 @@ public final class BatchImporterImpl
                 // Disable the auditable aspect's behaviours for this transaction, to allow creation & modification dates to be set
                 behaviourFilter.disableBehaviour(ContentModel.ASPECT_AUDITABLE);
 
-                importBatchImpl(target, batch, replaceExisting, dryRun);
+                importBatchImpl(target, batch, replaceExisting, pessimistic, dryRun);
                 return(null);
             }
         },
@@ -209,6 +211,7 @@ public final class BatchImporterImpl
     void importBatchImpl(final NodeRef  target,
                          final Batch<T> batch,
                          final boolean  replaceExisting,
+                         final boolean  pessimistic,
                          final boolean  useDryRun)
         throws InterruptedException
     {
@@ -218,6 +221,16 @@ public final class BatchImporterImpl
             {
                 if (importStatus.isStopping() || Thread.currentThread().isInterrupted()) throw new InterruptedException(Thread.currentThread().getName() + " was interrupted. Terminating early.");
 
+                if (!useDryRun && pessimistic)
+                {
+                	// If this isn't a dry run, and we're being pessimistic, we want to fail
+                	// on the first error, so we make no attempt at catching it here
+                	importItem(target, item, replaceExisting, null);
+                	return;
+                }
+
+                // This is either a dry run, or an optimistic batch, so we intercept
+                // errors and log them here, but don't report crap upwards...
             	final DryRun<T> dryRun = (useDryRun ? new DryRun<>(item) : null);
                 try
                 {
@@ -227,15 +240,7 @@ public final class BatchImporterImpl
                 }
                 catch (Exception e)
                 {
-                	// Catch this so we don't break the current batch... unless it's directories in which case
-                	// we fail... we assume that the model still processes directories first, and then files
-                	importStatus.unexpectedError(BulkImportTools.getCompleteTargetPath(item), e);
-                	// If we're not in a dry run, and this is a directory, we fail the batch...
-                	// if this is a dry run or this isn't a directory, we keep going...
-                	if (!useDryRun && item.isDirectory())
-                	{
-                		return;
-                	}
+               		importStatus.unexpectedError(BulkImportTools.getCompleteTargetPath(item), e);
                 }
             }
         }

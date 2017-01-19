@@ -334,12 +334,12 @@ public final class Scanner
             if (multiThreadedImport)
             {
                 // Submit the batch to the thread pool
-                submitBatch(batch);
+                submitBatch(batch, !filePhase);
             }
             else
             {
                 // Import the batch directly on this thread
-                batchImporter.importBatch(userId, target, batch, replaceExisting, dryRun);
+                batchImporter.importBatch(userId, target, batch, replaceExisting, !filePhase, dryRun);
 
                 // Check if the multi-threading threshold has been reached
                 multiThreadedImport = filePhase && currentBatchNumber >= MULTITHREADING_THRESHOLD;
@@ -356,7 +356,7 @@ public final class Scanner
      *
      * @param batch The batch to submit <i>(may be null or empty, although that will result in a no-op)</i>.
      */
-    private void submitBatch(final Batch<?> batch)
+    private void submitBatch(final Batch<?> batch, boolean pessimistic)
     {
         if (batch        != null &&
             batch.size() >  0)
@@ -364,7 +364,7 @@ public final class Scanner
             if (importStatus.inProgress() &&
                 !importStatus.isStopping())
             {
-                importThreadPool.execute(new BatchImportJob(batch));
+                importThreadPool.execute(new BatchImportJob(batch, pessimistic));
             }
             else
             {
@@ -465,11 +465,13 @@ public final class Scanner
     private final class BatchImportJob
         implements Runnable
     {
-        private final Batch<?>  batch;
+        private final Batch<?> batch;
+        private final boolean  pessimistic;
 
-        public BatchImportJob(final Batch<?> batch)
+        public BatchImportJob(final Batch<?> batch, boolean pessimistic)
         {
             this.batch = batch;
+            this.pessimistic = pessimistic;
         }
 
 
@@ -478,8 +480,7 @@ public final class Scanner
         {
             try
             {
-                batchImporter.importBatch(userId, target, batch, replaceExisting, dryRun);
-                // TODO: Scan through the dry run's faults
+                batchImporter.importBatch(userId, target, batch, replaceExisting, pessimistic, dryRun);
             }
             catch (final Throwable t)
             {
@@ -497,12 +498,15 @@ public final class Scanner
                 }
                 else
                 {
-                    // An unexpected exception during import of the batch - log it and kill the entire import
+                    // An unexpected exception during import of the batch
                     error(log, "Bulk import from '" + source.getName() + "' failed.", t);
                     importStatus.unexpectedError(source.getName(), t);
 
-                    if (debug(log)) debug(log, "Shutting down import thread pool.");
-                    importThreadPool.shutdownNow();
+                    if (pessimistic)
+                    {
+                        if (debug(log)) debug(log, "Shutting down import thread pool.");
+                        importThreadPool.shutdownNow();
+                    }
                 }
             }
         }
