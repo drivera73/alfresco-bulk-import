@@ -516,6 +516,7 @@ public class BulkImportStatusImpl
     {
     	sourceCounters.clear();
     	targetCounters.clear();
+    	errorInfo.clear();
     }
 
     // Private helper methods
