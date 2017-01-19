@@ -59,6 +59,7 @@ public final class FilesystemBulkImportItemVersion
     @SuppressWarnings("unused")
     private final static Log log = LogFactory.getLog(FilesystemBulkImportItemVersion.class);
 
+    private final ServiceRegistry  serviceRegistry;
     private final MimetypeService  mimeTypeService;
     private final NamespaceService namespaceService;
     private final ContentStore     configuredContentStore;
@@ -86,6 +87,7 @@ public final class FilesystemBulkImportItemVersion
                             ContentModel.TYPE_CONTENT.toPrefixString(serviceRegistry.getNamespaceService())),
               versionNumber);
 
+        this.serviceRegistry        = serviceRegistry;
         this.mimeTypeService        = serviceRegistry.getMimetypeService();
         this.namespaceService       = serviceRegistry.getNamespaceService();
         this.configuredContentStore = configuredContentStore;
@@ -255,6 +257,7 @@ public final class FilesystemBulkImportItemVersion
                 {
                     final Path                path       = contentReference.toPath();
                     final BasicFileAttributes attributes = Files.readAttributes(path, BasicFileAttributes.class);
+                    final String              user       = serviceRegistry.getAuthenticationService().getCurrentUserName();
 
                     // If not set in the metadata file, set the creation timestamp to what's on disk
                     if (!cachedMetadata.getProperties().containsKey(ContentModel.PROP_CREATED.toString()) &&
@@ -266,6 +269,14 @@ public final class FilesystemBulkImportItemVersion
                         cachedMetadata.addProperty(ContentModel.PROP_CREATED.toString(), created);
                     }
 
+                    // If not set in the metadata file, set the creator user to the current user
+                    if (!cachedMetadata.getProperties().containsKey(ContentModel.PROP_CREATOR.toString()) &&
+                        !cachedMetadata.getProperties().containsKey(ContentModel.PROP_CREATOR.toPrefixString()) &&
+                        !cachedMetadata.getProperties().containsKey(ContentModel.PROP_CREATOR.toPrefixString(namespaceService)))
+                    {
+                        cachedMetadata.addProperty(ContentModel.PROP_CREATOR.toString(), user);
+                    }
+
                     // If not set in the metadata file, set the modification timestamp to what's on disk
                     if (!cachedMetadata.getProperties().containsKey(ContentModel.PROP_MODIFIED.toString()) &&
                         !cachedMetadata.getProperties().containsKey(ContentModel.PROP_MODIFIED.toPrefixString()) &&
@@ -274,6 +285,14 @@ public final class FilesystemBulkImportItemVersion
                     {
                         final Date modified = new Date(attributes.lastModifiedTime().toMillis());
                         cachedMetadata.addProperty(ContentModel.PROP_MODIFIED.toString(), modified);
+                    }
+
+                    // If not set in the metadata file, set the modifier user to the current user
+                    if (!cachedMetadata.getProperties().containsKey(ContentModel.PROP_MODIFIER.toString()) &&
+                        !cachedMetadata.getProperties().containsKey(ContentModel.PROP_MODIFIER.toPrefixString()) &&
+                        !cachedMetadata.getProperties().containsKey(ContentModel.PROP_MODIFIER.toPrefixString(namespaceService)))
+                    {
+                        cachedMetadata.addProperty(ContentModel.PROP_MODIFIER.toString(), user);
                     }
 
                     // If an in-place import is possible, attempt to construct a content URL

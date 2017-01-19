@@ -217,6 +217,7 @@ public abstract class BulkImporterImpl   // Note: this class is only abstract be
         scannerThread.setName(SCANNER_THREAD_NAME);
         scannerThread.setDaemon(true);
         scannerThread.start();
+        
     }
 
 

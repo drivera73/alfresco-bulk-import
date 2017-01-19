@@ -674,16 +674,6 @@ public final class BatchImporterImpl
                 {
                     qNamedMetadata.put(ContentModel.PROP_NAME, item.getTargetName());
                 }
-                if (!qNamedMetadata.containsKey(ContentModel.PROP_CREATOR))
-                {
-                    qNamedMetadata.put(ContentModel.PROP_CREATOR, "dry run");
-                }
-                if (!qNamedMetadata.containsKey(ContentModel.PROP_MODIFIER))
-                {
-                    qNamedMetadata.put(ContentModel.PROP_MODIFIER, "dry run");
-                }
-                // TODO: If this is a reference, we can probably get away with creator and modifier being
-                // missing as well...but...how to tell?
 
                 // Step 1: make a list of all the attributes in the aspects and object type
                 Map<QName, PropertyDefinition> propDef = new HashMap<>();
