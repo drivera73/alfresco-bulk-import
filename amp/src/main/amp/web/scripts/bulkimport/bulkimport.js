@@ -441,26 +441,28 @@ function updateErrorTableBody(errorCounterId, tableBodyId, errorInfo)
     }
   }
 
-  var oldTableBody = document.getElementById(tableBodyId);
-  var newTableBody = document.createElement("tbody");
+  var oldDiv = document.getElementById(tableBodyId);
+  var newDiv = document.createElement("div");
 
-  newTableBody.setAttribute("id", tableBodyId);
+  newDiv.id = oldDiv.id;
+  newDiv.className = oldDiv.className;
 
   for (var error in errorInfo)
   {
-    error                = errorInfo[error];
-    var newRow           = newTableBody.insertRow();
-	var newCell          = newRow.insertCell();
-    var newPre           = document.createElement("pre");
-	newPre.setAttribute("style", "font-size:8pt");
+    error                     = errorInfo[error];
+    var newError              = document.createElement("div");
+    var newErrorData          = document.createElement("pre");
+	newError.appendChild(newErrorData);
 
-	var content          = "Timestamp: [" + error.TimeStamp + "]\n";
-    content             += "Item: [" + error.Item + "]\n";
-    content             += "Error Information:\n" + error.Error + "\n";
-    newPre.textContent   = content;
-	newCell.appendChild(newPre);
+	var content               = "Timestamp: [" + error.TimeStamp + "]\n";
+    content                  += "Item: [" + error.Item + "]\n";
+    content                  += "Error Information:\n" + error.Error + "\n";
+    newErrorData.textContent  = content;
+
+	newDiv.appendChild(newError);
   }
-  oldTableBody.parentNode.replaceChild(newTableBody, oldTableBody);
+
+  oldDiv.parentNode.replaceChild(newDiv, oldDiv);
 }
 
 function pauseImport()

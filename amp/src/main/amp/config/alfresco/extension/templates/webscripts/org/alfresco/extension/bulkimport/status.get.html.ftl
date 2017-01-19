@@ -238,30 +238,20 @@
       <h3>Error Details (<span id="errorCounter">${importStatus.errorInfo?size}</span> errors)</h3>
       <div>
 [#-- ERROR INFORMATION --]
-        <div id="detailsErrorInformation" style="display:block">
-          <br/>
-          <table id="errorTable" border="1" cellspacing="0" cellpadding="1" width="80%">
-            <thead>
-              <tr>
-                <th colspan="3">Error Information</th>
-              </tr>
-            </thead>
-            <tbody id="errorTableBody">
-            [#list importStatus.errorInfo as error]
-              [#assign timeStamp = error.timeStampStr]
-              [#assign item = error.item]
-              [#assign errorData = error.errorStr]
-              <tr>
-                <td><pre style="font-size:8pt">
+        <div id="errorTableBody" class="errorTableBody">
+        [#list importStatus.errorInfo as error]
+          [#assign timeStamp = error.timeStampStr]
+          [#assign item = error.item]
+          [#assign errorData = error.errorStr]
+          <div>
+            <pre>
 Timestamp: [${timeStamp}]
 Item: [${item}]
 Error Information:
 ${errorData}
-                </pre></td>
-              </tr>
-            [/#list]
-            </tbody>
-          </table>
+            </pre>
+          </div>
+        [/#list]
         </div>
       </div>
     </div>  [#-- End of accordion --]

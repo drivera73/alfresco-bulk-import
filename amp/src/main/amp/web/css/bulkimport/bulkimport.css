@@ -147,3 +147,21 @@ label {
   font-family: 'Open Sans', sans-serif;
   font-size: 16px;
 }
+
+div.errorTableBody {
+  width: 80%;
+  min-height: 200px;
+  max-height: 600px;
+  display: block;
+  overflow-y: auto;
+}
+
+div.errorTableBody div {
+  width: 100%;
+  display: block;
+  border-top: 1px solid black;
+}
+
+div.errorTableBody div pre {
+  font-size: 8pt;
+}
