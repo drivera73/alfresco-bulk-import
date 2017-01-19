@@ -128,7 +128,7 @@ public final class BatchImporterImpl
 
     public final void resetCaches()
     {
-    	this.parentCache.clear();
+        this.parentCache.clear();
     }
 
     /**
@@ -156,14 +156,14 @@ public final class BatchImporterImpl
             public Object doWork()
                 throws Exception
             {
-            	if (dryRun)
-            	{
-            		importBatchImpl(target, batch, replaceExisting, false, dryRun);
-            	}
-            	else
-            	{
+                if (dryRun)
+                {
+                    importBatchImpl(target, batch, replaceExisting, false, dryRun);
+                }
+                else
+                {
                     importBatchInTxn(target, batch, replaceExisting, pessimistic, dryRun);
-            	}
+                }
                 return(null);
             }
         }, userId);
@@ -221,26 +221,27 @@ public final class BatchImporterImpl
             {
                 if (importStatus.isStopping() || Thread.currentThread().isInterrupted()) throw new InterruptedException(Thread.currentThread().getName() + " was interrupted. Terminating early.");
 
-                if (!useDryRun && pessimistic)
-                {
-                	// If this isn't a dry run, and we're being pessimistic, we want to fail
-                	// on the first error, so we make no attempt at catching it here
-                	importItem(target, item, replaceExisting, null);
-                	return;
-                }
-
-                // This is either a dry run, or an optimistic batch, so we intercept
-                // errors and log them here, but don't report crap upwards...
-            	final DryRun<T> dryRun = (useDryRun ? new DryRun<>(item) : null);
+                final DryRun<T> dryRun = (useDryRun ? new DryRun<>(item) : null);
                 try
                 {
-                	importItem(target, item, replaceExisting, dryRun);
-                	// If the dry run has non-final faults, we need to "upgrade" them...
+                    importItem(target, item, replaceExisting, dryRun);
+                    // If the dry run has non-final faults, we need to "upgrade" them...
                     if (dryRun != null && dryRun.hasFaults()) throw new DryRunException(dryRun);
                 }
-                catch (Exception e)
+                catch (Throwable t)
                 {
-               		importStatus.unexpectedError(BulkImportTools.getCompleteTargetPath(item), e);
+                    if (!useDryRun && pessimistic)
+                    {
+                    	// If this isn't a dry run, and we're being pessimistic, we fail immediately
+                    	// but provide information about the item that failed
+                        throw new ItemImportException(item, t);
+                    }
+                    else
+                    {
+                    	// If this is a dry run, or we're being optimistic, we report the error,
+                    	// but we don't fail the batch
+                    	importStatus.unexpectedError(BulkImportTools.getCompleteTargetPath(item), t);
+                    }
                 }
             }
         }
@@ -282,8 +283,8 @@ public final class BatchImporterImpl
         }
         catch (final DryRunException e)
         {
-        	// Do nothing - this will be handled in the caller
-        	throw e;
+            // Do nothing - this will be handled in the caller
+            throw e;
         }
         catch (final OutOfOrderBatchException oobe)
         {
@@ -299,53 +300,53 @@ public final class BatchImporterImpl
     private NodeRef getParent(final NodeRef target, final BulkImportItem<?> item)
     {
         final String itemParentPath = BulkImportTools.getRelativeTargetPath(item);
-    	return ConcurrentUtils.createIfAbsentUnchecked(this.parentCache, itemParentPath, new ConcurrentInitializer<NodeRef>()
-    	{
-			@Override
-			public NodeRef get() throws ConcurrentException
-			{
-		        List<String> itemParentPathElements = (itemParentPath == null || itemParentPath.length() == 0) ? null : Arrays.asList(itemParentPath.split(REGEX_SPLIT_PATH_ELEMENTS));
+        return ConcurrentUtils.createIfAbsentUnchecked(this.parentCache, itemParentPath, new ConcurrentInitializer<NodeRef>()
+        {
+            @Override
+            public NodeRef get() throws ConcurrentException
+            {
+                List<String> itemParentPathElements = (itemParentPath == null || itemParentPath.length() == 0) ? null : Arrays.asList(itemParentPath.split(REGEX_SPLIT_PATH_ELEMENTS));
 
-		        // If the item is meant to be a direct child of the target folder, return it immediately
-		        if (itemParentPathElements == null || itemParentPathElements.isEmpty()) return target;
+                // If the item is meant to be a direct child of the target folder, return it immediately
+                if (itemParentPathElements == null || itemParentPathElements.isEmpty()) return target;
 
-		        if (debug(log)) debug(log, "Finding parent folder '" + itemParentPath + "'.");
+                if (debug(log)) debug(log, "Finding parent folder '" + itemParentPath + "'.");
 
-	            FileInfo fileInfo = null;
-	            try
-	            {
-	                //####TODO: I THINK THIS WILL FAIL IN THE PRESENCE OF CUSTOM NAMESPACES / PARENT ASSOC QNAMES!!!!
-	                fileInfo = serviceRegistry.getFileFolderService().resolveNamePath(target, itemParentPathElements, false);
-	            }
-	            catch (final FileNotFoundException fnfe)  // This should never be triggered due to the last parameter in the resolveNamePath call, but just in case
-	            {
-	                throw new OutOfOrderBatchException(itemParentPath, fnfe);
-	            }
+                FileInfo fileInfo = null;
+                try
+                {
+                    //####TODO: I THINK THIS WILL FAIL IN THE PRESENCE OF CUSTOM NAMESPACES / PARENT ASSOC QNAMES!!!!
+                    fileInfo = serviceRegistry.getFileFolderService().resolveNamePath(target, itemParentPathElements, false);
+                }
+                catch (final FileNotFoundException fnfe)  // This should never be triggered due to the last parameter in the resolveNamePath call, but just in case
+                {
+                    throw new OutOfOrderBatchException(itemParentPath, fnfe);
+                }
 
-	            // Out of order batch submission (child arrived before parent)
-	            if (fileInfo == null)
-	            {
-	                throw new OutOfOrderBatchException(itemParentPath);
-	            }
+                // Out of order batch submission (child arrived before parent)
+                if (fileInfo == null)
+                {
+                    throw new OutOfOrderBatchException(itemParentPath);
+                }
 
-	            return fileInfo.getNodeRef();
-			}
-    	});
+                return fileInfo.getNodeRef();
+            }
+        });
     }
 
     private NodeRef cacheNode(final BulkImportItem<?> item, NodeRef nodeRef)
     {
-    	if (nodeRef == null) return null;
-    	String itemPath = BulkImportTools.getRelativeTargetPath(item);
-    	if (itemPath == null || itemPath.length() == 0)
-    	{
-    		itemPath = item.getTargetName();
-    	}
-    	else
-    	{
-    		itemPath = String.format("%s/%s", itemPath, item.getTargetName());
-    	}
-    	return ConcurrentUtils.putIfAbsent(this.parentCache, itemPath, nodeRef);
+        if (nodeRef == null) return null;
+        String itemPath = BulkImportTools.getRelativeTargetPath(item);
+        if (itemPath == null || itemPath.length() == 0)
+        {
+            itemPath = item.getTargetName();
+        }
+        else
+        {
+            itemPath = String.format("%s/%s", itemPath, item.getTargetName());
+        }
+        return ConcurrentUtils.putIfAbsent(this.parentCache, itemPath, nodeRef);
     }
 
     private final <T extends BulkImportItemVersion>
@@ -366,19 +367,19 @@ public final class BatchImporterImpl
         NodeRef parentNodeRef = null;
         try
         {
-        	parentNodeRef = getParent(target, item);
+            parentNodeRef = getParent(target, item);
         }
         catch (final OutOfOrderBatchException oobe)
         {
-        	if (dryRun != null)
-        	{
-        		dryRun.addItemFault(String.format("Missing parent path [%s]", BulkImportTools.getRelativeTargetPath(item)));
-        		parentNodeRef = DRY_RUN_CREATED_NODEREF;
-        	}
-        	else
-        	{
-        		throw oobe;
-        	}
+            if (dryRun != null)
+            {
+                dryRun.addItemFault(String.format("Missing parent path [%s]", BulkImportTools.getRelativeTargetPath(item)));
+                parentNodeRef = DRY_RUN_CREATED_NODEREF;
+            }
+            else
+            {
+                throw oobe;
+            }
         }
 
         // This should never happen, but cover for it anyway...
@@ -405,7 +406,7 @@ public final class BatchImporterImpl
             props.put(ContentModel.PROP_NAME, nodeName);
             if (dryRun != null)
             {
-            	result = DRY_RUN_CREATED_NODEREF;
+                result = DRY_RUN_CREATED_NODEREF;
             }
             else
             {
@@ -594,21 +595,21 @@ public final class BatchImporterImpl
             QName typeQname = createQName(serviceRegistry, type);
             if (dryRun != null)
             {
-            	typeDef = dictionary.getType(typeQname);
-            	if (typeDef == null)
-            	{
-            		dryRun.addVersionFault(version, String.format("Missing Type [%s]", type));
-            		throw new DryRunException(dryRun);
-            	}
-        		// Add the base type's aspects
-        		for (AspectDefinition def : typeDef.getDefaultAspects(true))
-        		{
-                	if (definedAspects == null)
-                	{
-                		definedAspects = new LinkedHashMap<>();
-                	}
-        			definedAspects.put(def.getName(), def);
-        		}
+                typeDef = dictionary.getType(typeQname);
+                if (typeDef == null)
+                {
+                    dryRun.addVersionFault(version, String.format("Missing Type [%s]", type));
+                    throw new DryRunException(dryRun);
+                }
+                // Add the base type's aspects
+                for (AspectDefinition def : typeDef.getDefaultAspects(true))
+                {
+                    if (definedAspects == null)
+                    {
+                        definedAspects = new LinkedHashMap<>();
+                    }
+                    definedAspects.put(def.getName(), def);
+                }
             }
             else
             {
@@ -627,21 +628,21 @@ public final class BatchImporterImpl
                 QName aspectQname = createQName(serviceRegistry, aspect);
                 if (dryRun != null)
                 {
-                	if (definedAspects == null)
-                	{
-                		definedAspects = new LinkedHashMap<>();
-                	}
-                	AspectDefinition def = dictionary.getAspect(aspectQname);
-                	if (def == null)
-                	{
-                		dryRun.addVersionFault(version, String.format("Missing Aspect [%s]", type));
-                		missingAspects = true;
-                	}
-                	if (!definedAspects.containsKey(def.getName())) definedAspects.put(def.getName(), def);
+                    if (definedAspects == null)
+                    {
+                        definedAspects = new LinkedHashMap<>();
+                    }
+                    AspectDefinition def = dictionary.getAspect(aspectQname);
+                    if (def == null)
+                    {
+                        dryRun.addVersionFault(version, String.format("Missing Aspect [%s]", type));
+                        missingAspects = true;
+                    }
+                    if (!definedAspects.containsKey(def.getName())) definedAspects.put(def.getName(), def);
                 }
                 else
                 {
-                	nodeService.addAspect(nodeRef, aspectQname, null);
+                    nodeService.addAspect(nodeRef, aspectQname, null);
                 }
             }
             if (missingAspects) throw new DryRunException(dryRun);
@@ -667,61 +668,61 @@ public final class BatchImporterImpl
 
             if (dryRun != null)
             {
-            	// Make sure to patch this up - some objects don't need the name property to be defined so we
-            	// leave them be as such...
+                // Make sure to patch this up - some objects don't need the name property to be defined so we
+                // leave them be as such...
                 if (!qNamedMetadata.containsKey(ContentModel.PROP_NAME))
                 {
-                	qNamedMetadata.put(ContentModel.PROP_NAME, item.getTargetName());
+                    qNamedMetadata.put(ContentModel.PROP_NAME, item.getTargetName());
                 }
-    			// TODO: If this is a reference, we can probably get away with creator and modifier being
-    			// missing as well...but...how to tell?
+                // TODO: If this is a reference, we can probably get away with creator and modifier being
+                // missing as well...but...how to tell?
 
                 // Step 1: make a list of all the attributes in the aspects and object type
-            	Map<QName, PropertyDefinition> propDef = new HashMap<>();
-            	propDef.putAll(typeDef.getProperties());
-            	if (definedAspects != null)
-            	{
-	            	for (AspectDefinition aspect : definedAspects.values())
-	            	{
-	            		propDef.putAll(aspect.getProperties());
-	            	}
-            	}
+                Map<QName, PropertyDefinition> propDef = new HashMap<>();
+                propDef.putAll(typeDef.getProperties());
+                if (definedAspects != null)
+                {
+                    for (AspectDefinition aspect : definedAspects.values())
+                    {
+                        propDef.putAll(aspect.getProperties());
+                    }
+                }
 
-            	// Step 2: make sure all properties that are required are present, and that all property values
-            	// match any enabled constraints
-            	for (PropertyDefinition property : propDef.values())
-            	{
-            		final QName propertyName = property.getName();
-            		final String propertyNS = propertyName.getNamespaceURI();
-            		
-            		if (NamespaceService.SYSTEM_MODEL_1_0_URI.equals(propertyNS))
-            		{
-            			// We won't check for system properties, as this isn't a common thing
-            			// and if they're missing, the system will (usually) fill them in 
-            			continue;
-            		}
+                // Step 2: make sure all properties that are required are present, and that all property values
+                // match any enabled constraints
+                for (PropertyDefinition property : propDef.values())
+                {
+                    final QName propertyName = property.getName();
+                    final String propertyNS = propertyName.getNamespaceURI();
+                    
+                    if (NamespaceService.SYSTEM_MODEL_1_0_URI.equals(propertyNS))
+                    {
+                        // We won't check for system properties, as this isn't a common thing
+                        // and if they're missing, the system will (usually) fill them in 
+                        continue;
+                    }
 
-        			final Serializable value = qNamedMetadata.get(propertyName);
-            		if (property.isMandatory() && property.isMandatoryEnforced() && (value == null))
-        			{
-            			dryRun.addVersionFault(version, String.format("Missing mandatory property [%s]", property.getName()));
-            			continue;
-        			}
-            		
-            		// TODO: double-check if the value is compatible with the target type
+                    final Serializable value = qNamedMetadata.get(propertyName);
+                    if (property.isMandatory() && property.isMandatoryEnforced() && (value == null))
+                    {
+                        dryRun.addVersionFault(version, String.format("Missing mandatory property [%s]", property.getName()));
+                        continue;
+                    }
+                    
+                    // TODO: double-check if the value is compatible with the target type
 
-        			for (ConstraintDefinition constraint : property.getConstraints())
-        			{
-        				try
-        				{
-        					constraint.getConstraint().evaluate(value);
-        				}
-        				catch (ConstraintException e)
-        				{
-                			dryRun.addVersionFault(version, String.format("Constraint [%s] violation on property [%s]", constraint.getName(), property.getName()));
-        				}
-        			}
-            	}
+                    for (ConstraintDefinition constraint : property.getConstraints())
+                    {
+                        try
+                        {
+                            constraint.getConstraint().evaluate(value);
+                        }
+                        catch (ConstraintException e)
+                        {
+                            dryRun.addVersionFault(version, String.format("Constraint [%s] violation on property [%s]", constraint.getName(), property.getName()));
+                        }
+                    }
+                }
             }
 
             try
@@ -763,16 +764,16 @@ public final class BatchImporterImpl
             {
                 if (trace(log)) trace(log, "Content for node '" + String.valueOf(nodeRef) + "' is in-place.");
 
-            	Map<String, Serializable> metadata = version.getMetadata();
+                Map<String, Serializable> metadata = version.getMetadata();
                 if (!version.hasMetadata() || metadata == null ||
                     (!metadata.containsKey(ContentModel.PROP_CONTENT.toPrefixString()) &&
                      !metadata.containsKey(ContentModel.PROP_CONTENT.toString())))
                 {
-                	if (dryRun != null)
-                	{
-                		dryRun.addVersionFault(version, "Object with in-place content missing the content property");
-                		throw new DryRunException(dryRun);
-                	}
+                    if (dryRun != null)
+                    {
+                        dryRun.addVersionFault(version, "Object with in-place content missing the content property");
+                        throw new DryRunException(dryRun);
+                    }
 
                     throw new IllegalStateException("The source system you selected is incorrectly implemented - it is reporting" +
                                                     " that content is in place for '" + version.getContentSource() +
@@ -782,25 +783,25 @@ public final class BatchImporterImpl
 
                 if (dryRun != null)
                 {
-                	Serializable content = metadata.get(ContentModel.PROP_CONTENT.toPrefixString());
-                	if (content == null) content = metadata.get(ContentModel.PROP_CONTENT.toString());
-                	
-                	File contentFile = null;
-                	if (File.class.isInstance(content))
-                	{
-                		contentFile = File.class.cast(content);
-                	}
-                	else
-                	{
-                		contentFile = new File(content.toString());
-                	}
+                    Serializable content = metadata.get(ContentModel.PROP_CONTENT.toPrefixString());
+                    if (content == null) content = metadata.get(ContentModel.PROP_CONTENT.toString());
+                    
+                    File contentFile = null;
+                    if (File.class.isInstance(content))
+                    {
+                        contentFile = File.class.cast(content);
+                    }
+                    else
+                    {
+                        contentFile = new File(content.toString());
+                    }
 
-                	contentFile = Tools.canonicalize(contentFile);
-            		if (!contentFile.exists() || !contentFile.isFile() || !contentFile.canRead())
-            		{
-            			dryRun.addVersionFault(version, String.format("In-line content at [%s] is either missing, not a file, or not readable", contentFile.getPath()));
-                		throw new DryRunException(dryRun);
-                	}
+                    contentFile = Tools.canonicalize(contentFile);
+                    if (!contentFile.exists() || !contentFile.isFile() || !contentFile.canRead())
+                    {
+                        dryRun.addVersionFault(version, String.format("In-line content at [%s] is either missing, not a file, or not readable", contentFile.getPath()));
+                        throw new DryRunException(dryRun);
+                    }
                 }
 
                 importStatus.incrementTargetCounter(BulkImportStatus.TARGET_COUNTER_IN_PLACE_CONTENT_LINKED);
@@ -811,15 +812,15 @@ public final class BatchImporterImpl
 
                 if (dryRun != null)
                 {
-                	try
-                	{
-                		version.validateContent();
-                	}
-                	catch (Exception e)
-                	{
-                		dryRun.addVersionFault(version, e);
-                		throw new DryRunException(dryRun);
-                	}
+                    try
+                    {
+                        version.validateContent();
+                    }
+                    catch (Exception e)
+                    {
+                        dryRun.addVersionFault(version, e);
+                        throw new DryRunException(dryRun);
+                    }
                 }
                 else
                 {

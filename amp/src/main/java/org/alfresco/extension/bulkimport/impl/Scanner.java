@@ -39,6 +39,7 @@ import org.alfresco.extension.bulkimport.BulkImportStatus;
 
 import org.alfresco.extension.bulkimport.source.BulkImportItem;
 import org.alfresco.extension.bulkimport.source.BulkImportSource;
+import org.alfresco.extension.bulkimport.source.BulkImportTools;
 import org.alfresco.extension.bulkimport.source.BulkImportItemVersion;
 
 import static java.util.concurrent.TimeUnit.*;
@@ -478,9 +479,17 @@ public final class Scanner
         @Override
         public void run()
         {
+        	boolean failed = true;
             try
             {
                 batchImporter.importBatch(userId, target, batch, replaceExisting, pessimistic, dryRun);
+                failed = false;
+            }
+            catch (ItemImportException e)
+            {
+                // An unexpected exception during import of the batch
+                error(log, "Bulk import from '" + source.getName() + "' failed.", e);
+                importStatus.unexpectedError(BulkImportTools.getCompleteSourcePath(e.failedItem), e);
             }
             catch (final Throwable t)
             {
@@ -495,18 +504,21 @@ public final class Scanner
                     // A stop import was requested
                     if (debug(log)) debug(log, Thread.currentThread().getName() + " was interrupted by a stop request.", t);
                     Thread.currentThread().interrupt();
+                    failed = false;
                 }
                 else
                 {
                     // An unexpected exception during import of the batch
                     error(log, "Bulk import from '" + source.getName() + "' failed.", t);
                     importStatus.unexpectedError(source.getName(), t);
-
-                    if (pessimistic)
-                    {
-                        if (debug(log)) debug(log, "Shutting down import thread pool.");
-                        importThreadPool.shutdownNow();
-                    }
+                }
+            }
+            finally
+            {
+                if (failed && pessimistic)
+                {
+                    if (debug(log)) debug(log, "Shutting down import thread pool.");
+                    importThreadPool.shutdownNow();
                 }
             }
         }
