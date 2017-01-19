@@ -325,7 +325,7 @@ public final class Scanner
 
         if (currentBatch != null && currentBatch.size() > 0)
         {
-            final Batch batch = new Batch(currentBatchNumber, currentBatch);
+            final Batch<?> batch = new Batch<>(currentBatchNumber, currentBatch);
 
             // Prepare for the next batch
             currentBatch = null;
@@ -356,7 +356,7 @@ public final class Scanner
      *
      * @param batch The batch to submit <i>(may be null or empty, although that will result in a no-op)</i>.
      */
-    private void submitBatch(final Batch batch)
+    private void submitBatch(final Batch<?> batch)
     {
         if (batch        != null &&
             batch.size() >  0)
@@ -465,9 +465,9 @@ public final class Scanner
     private final class BatchImportJob
         implements Runnable
     {
-        private final Batch  batch;
+        private final Batch<?>  batch;
 
-        public BatchImportJob(final Batch batch)
+        public BatchImportJob(final Batch<?> batch)
         {
             this.batch = batch;
         }

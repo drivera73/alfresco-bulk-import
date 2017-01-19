@@ -233,7 +233,10 @@
 [/#if]
           </tbody>
         </table>
+      </div>
 
+      <h3>Error Details</h3>
+      <div>
 [#-- ERROR INFORMATION --]
 [#if importStatus.errorInfo??]
         <div id="detailsErrorInformation" style="display:block">
@@ -250,14 +253,14 @@
             <tbody>
             [#list importStatus.errorInfo as error]
               [#assign timeStamp = error.timeStampStr]
-              [#assign exception = error.errorStr]
+              [#assign errorData = error.errorStr]
               [#assign item = error.item]
               <tr>
                 <td><pre style="font-size:8pt" id="detailsLastException">
 Timestamp: [${timeStamp}]
 Item: [${item}]
-Exception Dump:
-${exception}
+Error Information:
+${errorData}
                 </pre></td>
               </tr>
             [/#list]

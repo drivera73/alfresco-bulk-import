@@ -49,7 +49,7 @@ public interface BatchImporter
      */
     public void importBatch(String  userId,
                             NodeRef target,
-                            Batch   batch,
+                            Batch<?>   batch,
                             boolean replaceExisting,
                             boolean dryRun)
         throws InterruptedException;

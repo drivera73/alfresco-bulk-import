@@ -136,10 +136,10 @@ public final class BatchImporterImpl
      */
     @Override
     public final void importBatch(final String  userId,
-                                  final NodeRef target,
-                                  final Batch   batch,
-                                  final boolean replaceExisting,
-                                  final boolean dryRun)
+                                  final NodeRef  target,
+                                  final Batch<?> batch,
+                                  final boolean  replaceExisting,
+                                  final boolean  dryRun)
         throws InterruptedException,
                OutOfOrderBatchException
     {
@@ -175,10 +175,11 @@ public final class BatchImporterImpl
     }
 
 
-    private final void importBatchInTxn(final NodeRef target,
-                                        final Batch   batch,
-                                        final boolean replaceExisting,
-                                        final boolean dryRun)
+    private final <T extends BulkImportItemVersion>
+    void importBatchInTxn(final NodeRef  target,
+                          final Batch<T> batch,
+                          final boolean  replaceExisting,
+                          final boolean  dryRun)
         throws InterruptedException,
                OutOfOrderBatchException
     {
@@ -204,26 +205,37 @@ public final class BatchImporterImpl
     }
 
 
-    private final void importBatchImpl(final NodeRef target,
-                                       final Batch   batch,
-                                       final boolean replaceExisting,
-                                       final boolean dryRun)
+    private final <T extends BulkImportItemVersion>
+    void importBatchImpl(final NodeRef  target,
+                         final Batch<T> batch,
+                         final boolean  replaceExisting,
+                         final boolean  useDryRun)
         throws InterruptedException
     {
         if (batch != null)
         {
-            for (final BulkImportItem<BulkImportItemVersion> item : batch)
+            for (final BulkImportItem<T> item : batch)
             {
                 if (importStatus.isStopping() || Thread.currentThread().isInterrupted()) throw new InterruptedException(Thread.currentThread().getName() + " was interrupted. Terminating early.");
 
+            	final DryRun<T> dryRun = (useDryRun ? new DryRun<>(item) : null);
                 try
                 {
                 	importItem(target, item, replaceExisting, dryRun);
+                	// If the dry run has non-final faults, we need to "upgrade" them...
+                    if (dryRun != null && dryRun.hasFaults()) throw new DryRunException(dryRun);
                 }
-                catch (DryRunException e)
+                catch (Exception e)
                 {
-                	// Catch this so we don't break the current batch
+                	// Catch this so we don't break the current batch... unless it's directories in which case
+                	// we fail... we assume that the model still processes directories first, and then files
                 	importStatus.unexpectedError(BulkImportTools.getCompleteTargetPath(item), e);
+                	// If we're not in a dry run, and this is a directory, we fail the batch...
+                	// if this is a dry run or this isn't a directory, we keep going...
+                	if (!useDryRun && item.isDirectory())
+                	{
+                		return;
+                	}
                 }
             }
         }
@@ -233,10 +245,9 @@ public final class BatchImporterImpl
     void importItem(final NodeRef           target,
                     final BulkImportItem<T> item,
                     final boolean           replaceExisting,
-                    final boolean           useDryRun)
+                    final DryRun<T>         dryRun)
         throws InterruptedException
     {
-    	final DryRun<T> dryRun = (useDryRun ? new DryRun<T>(item) : null);
         try
         {
             if (trace(log)) trace(log, "Importing " + (item.isDirectory() ? "directory " : "file ") + String.valueOf(item) + ".");
@@ -256,7 +267,7 @@ public final class BatchImporterImpl
                     importFile(nodeRef, item, dryRun);
                 }
             }
-
+            // Make sure we fail this item appropriately
             if (trace(log)) trace(log, "Finished importing " + String.valueOf(item));
         }
         catch (final InterruptedException ie)
@@ -264,14 +275,17 @@ public final class BatchImporterImpl
             Thread.currentThread().interrupt();
             throw ie;
         }
+        catch (final DryRunException e)
+        {
+        	// Do nothing - this will be handled in the caller
+        	throw e;
+        }
         catch (final OutOfOrderBatchException oobe)
         {
-    		importStatus.unexpectedError(BulkImportTools.getCompleteTargetPath(item), oobe);
             throw oobe;
         }
         catch (final Exception e)
         {
-    		importStatus.unexpectedError(BulkImportTools.getCompleteTargetPath(item), e);
             // Capture the item that failed, along with the exception
             throw new ItemImportException(item, e);
         }
@@ -660,6 +674,15 @@ public final class BatchImporterImpl
             	for (PropertyDefinition property : propDef.values())
             	{
             		final QName propertyName = property.getName();
+            		final String propertyNS = propertyName.getNamespaceURI();
+            		
+            		if (NamespaceService.SYSTEM_MODEL_1_0_URI.equals(propertyNS))
+            		{
+            			// We won't check for system properties, as this isn't a common thing
+            			// and if they're missing, the system will (usually) fill them in 
+            			continue;
+            		}
+
         			final Serializable value = qNamedMetadata.get(propertyName);
             		if (property.isMandatory() && property.isMandatoryEnforced() && (value == null))
         			{

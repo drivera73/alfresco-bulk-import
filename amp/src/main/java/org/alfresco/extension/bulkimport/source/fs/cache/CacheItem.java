@@ -23,7 +23,7 @@ import org.apache.commons.logging.Log;
 @XmlAccessorType(XmlAccessType.FIELD)
 @XmlType(propOrder =
 	{
-		"directory", "sourcePath", "sourceName", "targetPath", "targetName", "versions"
+		"directory", "sourceName", "sourcePath", "targetName", "targetPath", "versions"
 	}
 )
 @XmlRootElement(name = "item")
@@ -32,17 +32,17 @@ public class CacheItem
 	@XmlElement(name = "directory", required = true)
 	protected boolean directory;
 
-	@XmlElement(name = "sourcePath", required = true)
-	protected String sourcePath;
-
 	@XmlElement(name = "sourceName", required = true)
 	protected String sourceName;
 
-	@XmlElement(name = "targetPath", required = false)
-	protected String targetPath;
+	@XmlElement(name = "sourcePath", required = false)
+	protected String sourcePath;
 
 	@XmlElement(name = "targetName", required = true)
 	protected String targetName;
+
+	@XmlElement(name = "targetPath", required = false)
+	protected String targetPath;
 
 	@XmlElementWrapper(name = "versions", required = true)
 	@XmlElement(name = "version", required = true)

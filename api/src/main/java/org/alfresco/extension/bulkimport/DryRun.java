@@ -120,7 +120,7 @@ public class DryRun<V extends BulkImportItemVersion> {
 
 		StringWriter sw = new StringWriter();
 		PrintWriter pw = new PrintWriter(sw);
-
+		
 		pw.printf("Source Path: [%s]%n", BulkImportTools.getCompleteSourcePath(this.item));
 		pw.printf("Target Path: [%s]%n", BulkImportTools.getCompleteTargetPath(this.item));
 		pw.printf("%n");
@@ -130,7 +130,7 @@ public class DryRun<V extends BulkImportItemVersion> {
 			pw.printf("%s%n", StringUtils.repeat('=', 40));
 			for (Fault f : this.itemFaults)
 			{
-				pw.printf("\t%s\t%n", f.getTimeStampStr(), f.getInfo());
+				pw.printf("\t%s\t%s%n", f.getTimeStampStr(), f.getInfo());
 			}
 			pw.printf("%s%n%n", StringUtils.repeat('=', 40));
 		}
@@ -144,7 +144,7 @@ public class DryRun<V extends BulkImportItemVersion> {
 				pw.printf("\t%s%n", StringUtils.repeat('=', 30));
 				for (Fault f : versionFaults.get(v))
 				{
-					pw.printf("\t\t%s\t%n", f.getTimeStampStr(), f.getInfo());
+					pw.printf("\t\t%s\t%s%n", f.getTimeStampStr(), f.getInfo());
 				}
 				pw.printf("\t%s%n", StringUtils.repeat('=', 30));
 			}
