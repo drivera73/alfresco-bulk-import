@@ -42,11 +42,11 @@ public final class FilesystemBulkImportItem
     public FilesystemBulkImportItem(final String                          sourceName,
     	                            final String                          targetName,
                                     final boolean                         isDirectory,
-                                    final String                          relativePathOfParent,
-                                    final String                          altRelativePathOfParent,
+                                    final String                          sourcePathOfParent,
+                                    final String                          targetPathOfParent,
                                     final NavigableSet<FilesystemBulkImportItemVersion> versions)
     {
-        super(sourceName, targetName,  isDirectory, relativePathOfParent, altRelativePathOfParent, versions);
+        super(sourceName, targetName,  isDirectory, sourcePathOfParent, targetPathOfParent, versions);
     }
 
 }

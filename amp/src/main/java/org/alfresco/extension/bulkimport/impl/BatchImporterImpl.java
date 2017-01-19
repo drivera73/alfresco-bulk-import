@@ -602,12 +602,12 @@ public final class BatchImporterImpl
                 	if (definedAspects == null)
                 	{
                 		definedAspects = new LinkedHashMap<>();
-                		// Add the base type's aspects
-                		for (AspectDefinition def : typeDef.getDefaultAspects(true))
-                		{
-                			definedAspects.put(def.getName(), def);
-                		}
                 	}
+            		// Add the base type's aspects
+            		for (AspectDefinition def : typeDef.getDefaultAspects(true))
+            		{
+            			definedAspects.put(def.getName(), def);
+            		}
                 	AspectDefinition def = dictionary.getAspect(aspectQname);
                 	if (def == null)
                 	{
@@ -647,9 +647,12 @@ public final class BatchImporterImpl
             	// Step 1: make a list of all the attributes in the aspects and object type
             	Map<QName, PropertyDefinition> propDef = new HashMap<>();
             	propDef.putAll(typeDef.getProperties());
-            	for (AspectDefinition aspect : definedAspects.values())
+            	if (definedAspects != null)
             	{
-            		propDef.putAll(aspect.getProperties());
+	            	for (AspectDefinition aspect : definedAspects.values())
+	            	{
+	            		propDef.putAll(aspect.getProperties());
+	            	}
             	}
 
             	// Step 2: make sure all properties that are required are present, and that all property values

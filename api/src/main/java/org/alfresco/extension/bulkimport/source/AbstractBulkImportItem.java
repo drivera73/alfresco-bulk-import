@@ -47,8 +47,8 @@ public abstract class AbstractBulkImportItem<T extends BulkImportItemVersion>
     protected AbstractBulkImportItem(final String          sourceName,
                                      final String          targetName,
                                      final boolean         isDirectory,
-                                     final String          targetPathOfParent,
                                      final String          sourcePathOfParent,
+                                     final String          targetPathOfParent,
                                      final NavigableSet<T> versions)
     {
         if (StringUtils.isBlank(sourceName))
