@@ -235,7 +235,7 @@
         </table>
       </div>
 
-      <h3>Error Details</h3>
+      <h3>Error Details (<span id="errorCounter">${importStatus.errorInfo?size}</span> errors)</h3>
       <div>
 [#-- ERROR INFORMATION --]
         <div id="detailsErrorInformation" style="display:block">
@@ -243,7 +243,7 @@
           <table id="errorTable" border="1" cellspacing="0" cellpadding="1" width="80%">
             <thead>
               <tr>
-                <th colspan="3">Error Information (<span id="errorCounter">${importStatus.errorInfo?size}</span> errors)</th>
+                <th colspan="3">Error Information</th>
               </tr>
             </thead>
             <tbody id="errorTableBody">
