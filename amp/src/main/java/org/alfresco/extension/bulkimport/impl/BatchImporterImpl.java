@@ -658,7 +658,14 @@ public final class BatchImporterImpl
 
             if (dryRun != null)
             {
-            	// Step 1: make a list of all the attributes in the aspects and object type
+            	// Make sure to patch this up - some objects don't need the name property to be defined so we
+            	// leave them be as such...
+                if (!qNamedMetadata.containsKey(ContentModel.PROP_NAME))
+                {
+                	qNamedMetadata.put(ContentModel.PROP_NAME, item.getTargetName());
+                }
+
+                // Step 1: make a list of all the attributes in the aspects and object type
             	Map<QName, PropertyDefinition> propDef = new HashMap<>();
             	propDef.putAll(typeDef.getProperties());
             	if (definedAspects != null)
