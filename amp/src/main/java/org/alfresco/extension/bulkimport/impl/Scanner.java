@@ -27,6 +27,8 @@ import java.util.concurrent.TimeUnit;
 import java.nio.channels.ClosedByInterruptException;
 
 import org.alfresco.extension.bulkimport.util.ThreadPauser;
+import org.alfresco.repo.security.authentication.AuthenticationUtil;
+import org.alfresco.repo.security.authentication.AuthenticationUtil.RunAsWork;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -151,6 +153,20 @@ public final class Scanner
      */
     @Override
     public void run()
+    {
+        AuthenticationUtil.runAs(new RunAsWork<Object>()
+        {
+            @Override
+            public Object doWork()
+                throws Exception
+            {
+            	doRun();
+                return(null);
+            }
+        }, userId);
+    }
+    
+    private void doRun()
     {
         boolean inPlacePossible = false;
 
