@@ -99,12 +99,12 @@
   [#if importStatus.errorInfo??]
     [#list importStatus.errorInfo as error]
     {
-      [#assign TimeStamp = error.timeStampStr!'']
-      [#assign Item      = error.item!'']
-      [#assign Error     = error.errorStr!'']
-      "TimeStamp" : "${TimeStamp?js_string?replace("\\'", "'")?replace("\\>", ">")}",
-      "Item" : "${Item?js_string?replace("\\'", "'")?replace("\\>", ">")}",
-      "Error"  : "${Error?js_string?replace("\\'", "'")?replace("\\>", ">")}"
+      [#assign timeStamp = error.timeStampStr!'']
+      [#assign item      = error.item!'']
+      [#assign errorData = error.errorStr!'']
+      "TimeStamp" : "${timeStamp?js_string?replace("\\'", "'")?replace("\\>", ">")}",
+      "Item" : "${item?js_string?replace("\\'", "'")?replace("\\>", ">")}",
+      "Error"  : "${errorData?js_string?replace("\\'", "'")?replace("\\>", ">")}"
     }[#if error != importStatus.errorInfo?last],[/#if]
     [/#list]
   [/#if]

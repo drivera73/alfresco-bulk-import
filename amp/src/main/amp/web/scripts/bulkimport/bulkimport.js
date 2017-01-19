@@ -393,20 +393,14 @@ function refreshTextElements(cd)
     if (cd.currentlyImporting) document.getElementById("detailsCurrentlyImporting").textContent = cd.currentlyImporting;
 
     // Counters
-    if (cd.sourceCounters) updateTableBody("sourceCounterTableBody", cd.sourceCounters);
-    if (cd.targetCounters) updateTableBody("targetCounterTableBody", cd.targetCounters);
-
-    // Last exception
-    if (cd.lastException)
-    {
-      document.getElementById("detailsErrorInformation").style.display = "block";
-      document.getElementById("detailsLastException").textContent      = cd.lastException;
-    }
+    if (cd.sourceCounters) updateCounterTableBody("sourceCounterTableBody", cd.sourceCounters);
+    if (cd.targetCounters) updateCounterTableBody("targetCounterTableBody", cd.targetCounters);
+    if (cd.errorInfo) updateErrorTableBody("errorCounter", "errorTableBody", cd.errorInfo);
   }
 }
 
 
-function updateTableBody(tableBodyId, counterData)
+function updateCounterTableBody(tableBodyId, counterData)
 {
   var oldTableBody = document.getElementById(tableBodyId);
   var newTableBody = document.createElement("tbody");
@@ -436,6 +430,38 @@ function updateTableBody(tableBodyId, counterData)
   oldTableBody.parentNode.replaceChild(newTableBody, oldTableBody);
 }
 
+function updateErrorTableBody(errorCounterId, tableBodyId, errorInfo)
+{
+  if (errorCounterId)
+  {
+    var errorCounter = document.getElementById(errorCounterId);
+    if (errorCounter)
+    {
+      errorCounter.textContent = errorInfo.length;
+    }
+  }
+
+  var oldTableBody = document.getElementById(tableBodyId);
+  var newTableBody = document.createElement("tbody");
+
+  newTableBody.setAttribute("id", tableBodyId);
+
+  for (var error in errorInfo)
+  {
+    error                = errorInfo[error];
+    var newRow           = newTableBody.insertRow();
+	var newCell          = newRow.insertCell();
+    var newPre           = document.createElement("pre");
+	newPre.setAttribute("style", "font-size:8pt");
+
+	var content          = "Timestamp: [" + error.TimeStamp + "]\n";
+    content             += "Item: [" + error.Item + "]\n";
+    content             += "Error Information:\n" + error.Error + "\n";
+    newPre.textContent   = content;
+	newCell.appendChild(newPre);
+  }
+  oldTableBody.parentNode.replaceChild(newTableBody, oldTableBody);
+}
 
 function pauseImport()
 {

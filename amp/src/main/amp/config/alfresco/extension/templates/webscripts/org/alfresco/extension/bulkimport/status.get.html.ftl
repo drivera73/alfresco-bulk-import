@@ -238,25 +238,21 @@
       <h3>Error Details</h3>
       <div>
 [#-- ERROR INFORMATION --]
-[#if importStatus.errorInfo??]
         <div id="detailsErrorInformation" style="display:block">
-[#else]
-        <div id="detailsErrorInformation" style="display:none">
-[/#if]
           <br/>
-          <table border="1" cellspacing="0" cellpadding="1" width="80%">
+          <table id="errorTable" border="1" cellspacing="0" cellpadding="1" width="80%">
             <thead>
               <tr>
-                <th colspan="3">Error Information (${importStatus.errorInfo?size} errors)</th>
+                <th colspan="3">Error Information (<span id="errorCounter">${importStatus.errorInfo?size}</span> errors)</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody id="errorTableBody">
             [#list importStatus.errorInfo as error]
               [#assign timeStamp = error.timeStampStr]
-              [#assign errorData = error.errorStr]
               [#assign item = error.item]
+              [#assign errorData = error.errorStr]
               <tr>
-                <td><pre style="font-size:8pt" id="detailsLastException">
+                <td><pre style="font-size:8pt">
 Timestamp: [${timeStamp}]
 Item: [${item}]
 Error Information:
