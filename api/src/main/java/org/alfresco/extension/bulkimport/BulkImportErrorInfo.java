@@ -84,7 +84,7 @@ public class BulkImportErrorInfo
         	BulkImportItem<?> item = container.getItem();
             StringWriter sw = new StringWriter();
             PrintWriter pw = new PrintWriter(sw);
-            
+            pw.printf("%n");
             pw.printf("Source Path: [%s]%n", BulkImportTools.getCompleteSourcePath(item));
             pw.printf("Target Path: [%s]%n", BulkImportTools.getCompleteTargetPath(item));
             pw.printf("%n");
