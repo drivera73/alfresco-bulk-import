@@ -582,6 +582,7 @@ public final class BatchImporterImpl
         DictionaryService         dictionary = serviceRegistry.getDictionaryService();
 
         TypeDefinition typeDef = null;
+        Map<QName, AspectDefinition> definedAspects = null;
         if (type != null)
         {
             if (trace(log)) trace(log, "Setting type of '" + String.valueOf(nodeRef) + "' to '" + String.valueOf(type) + "'.");
@@ -594,6 +595,15 @@ public final class BatchImporterImpl
             		dryRun.addVersionFault(version, String.format("Missing Type [%s]", type));
             		throw new DryRunException(dryRun);
             	}
+        		// Add the base type's aspects
+        		for (AspectDefinition def : typeDef.getDefaultAspects(true))
+        		{
+                	if (definedAspects == null)
+                	{
+                		definedAspects = new LinkedHashMap<>();
+                	}
+        			definedAspects.put(def.getName(), def);
+        		}
             }
             else
             {
@@ -601,7 +611,6 @@ public final class BatchImporterImpl
             }
         }
 
-        Map<QName, AspectDefinition> definedAspects = null;
         if (aspects != null)
         {
             boolean missingAspects = false;
@@ -617,11 +626,6 @@ public final class BatchImporterImpl
                 	{
                 		definedAspects = new LinkedHashMap<>();
                 	}
-            		// Add the base type's aspects
-            		for (AspectDefinition def : typeDef.getDefaultAspects(true))
-            		{
-            			definedAspects.put(def.getName(), def);
-            		}
                 	AspectDefinition def = dictionary.getAspect(aspectQname);
                 	if (def == null)
                 	{
@@ -664,6 +668,8 @@ public final class BatchImporterImpl
                 {
                 	qNamedMetadata.put(ContentModel.PROP_NAME, item.getTargetName());
                 }
+    			// TODO: If this is a reference, we can probably get away with creator and modifier being
+    			// missing as well...but...how to tell?
 
                 // Step 1: make a list of all the attributes in the aspects and object type
             	Map<QName, PropertyDefinition> propDef = new HashMap<>();
