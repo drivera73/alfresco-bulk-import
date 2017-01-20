@@ -1,9 +1,9 @@
 <webscript>
   <shortname>Bulk Export UI</shortname>
   <description>Bulk Export User Interface</description>
-  <url>/bulk/export/ui</url>
-  <authentication>admin</authentication>
+  <url>/bulk/export</url>
   <transaction>required</transaction>
+  <authentication>admin</authentication>
   <family>Bulk Export</family>
   <cache>
      <never>true</never>
