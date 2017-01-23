@@ -5,12 +5,16 @@ import java.io.IOException;
 import java.util.List;
 import java.util.NavigableSet;
 import java.util.TreeSet;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
+import javax.xml.bind.Unmarshaller;
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlElementWrapper;
 import javax.xml.bind.annotation.XmlRootElement;
+import javax.xml.bind.annotation.XmlTransient;
 import javax.xml.bind.annotation.XmlType;
 
 import org.alfresco.extension.bulkimport.source.fs.FilesystemBulkImportItem;
@@ -18,27 +22,43 @@ import org.alfresco.extension.bulkimport.source.fs.FilesystemBulkImportItemVersi
 import org.alfresco.extension.bulkimport.source.fs.MetadataLoader;
 import org.alfresco.repo.content.ContentStore;
 import org.alfresco.service.ServiceRegistry;
+import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 
 @XmlAccessorType(XmlAccessType.FIELD)
 @XmlType(propOrder =
 	{
-		"directory", "sourceName", "sourcePath", "targetName", "targetPath", "versions"
+		"directory", "name", "fsRelativePath", "relativePath", "sourceName", "sourcePath", "targetName", "targetPath", "versions"
 	}
 )
 @XmlRootElement(name = "item")
 public class CacheItem
 {
+	@XmlTransient
+	private static final Pattern VERSION_SUFFIX = Pattern.compile("^.*(\\.v(\\d+(?:\\.\\d+)?))$");
+
 	@XmlElement(name = "directory", required = true)
 	protected boolean directory;
 
-	@XmlElement(name = "sourceName", required = true)
+	/* Support the old version scan index */
+	@XmlElement(name = "name", required = false)
+	protected String name;
+
+	@XmlElement(name = "fsRelativePath", required = false)
+	protected String fsRelativePath;
+
+	@XmlElement(name = "relativePath", required = false)
+	protected String relativePath;
+
+	/* Support the new version scan index */
+	@XmlElement(name = "sourceName", required = false)
 	protected String sourceName;
 
 	@XmlElement(name = "sourcePath", required = false)
 	protected String sourcePath;
 
-	@XmlElement(name = "targetName", required = true)
+	@XmlElement(name = "targetName", required = false)
 	protected String targetName;
 
 	@XmlElement(name = "targetPath", required = false)
@@ -47,6 +67,48 @@ public class CacheItem
 	@XmlElementWrapper(name = "versions", required = true)
 	@XmlElement(name = "version", required = true)
 	protected List<CacheItemVersion> versions;
+
+    protected void afterUnmarshal(Unmarshaller u, Object parent)
+    {
+        if (!StringUtils.isEmpty(name) && ((fsRelativePath != null) || (relativePath != null)))
+        {
+        	populateFromOldVersion();
+        }
+    }
+    
+    private void populateFromOldVersion()
+    {
+    	// Old XML version... convert!
+
+    	// It's OK to assume we'll have at least one version - that's how it's built
+		CacheItemVersion v = versions.get(0);
+
+		// It'll have at least one of content and metadata, else what's the reason for its existence?
+		String vname = v.getContent();
+		if (StringUtils.isEmpty(vname)) vname = v.getMetadata();
+
+		// The source name will be the basename for the source file (minus extension)
+		sourceName = FilenameUtils.getName(vname);
+		// If it ends with vXX or vXX.XX, remove the version tag...
+		Matcher m = VERSION_SUFFIX.matcher(sourceName);
+		if (m.matches())
+		{
+			// If there's a version suffix, we remove it...
+			String suffix = m.group(1);
+			sourceName = sourceName.substring(0, sourceName.length() - suffix.length());
+		}
+		
+    	sourcePath = fsRelativePath;
+
+    	// These two are straight shots
+    	targetName = name;
+    	targetPath = relativePath;
+
+    	// Remove old values in case someone marshalls the object
+    	name = null;
+    	fsRelativePath = null;
+    	relativePath = null;
+    }
 
 	public FilesystemBulkImportItem generate(final File            basePath,
                                              final ServiceRegistry serviceRegistry,
