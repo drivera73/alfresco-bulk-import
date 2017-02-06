@@ -14,7 +14,6 @@ import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlElementWrapper;
 import javax.xml.bind.annotation.XmlRootElement;
-import javax.xml.bind.annotation.XmlTransient;
 import javax.xml.bind.annotation.XmlType;
 
 import org.alfresco.extension.bulkimport.source.fs.FilesystemBulkImportItem;
@@ -35,8 +34,11 @@ import org.apache.commons.logging.Log;
 @XmlRootElement(name = "item")
 public class CacheItem
 {
-	@XmlTransient
 	private static final Pattern VERSION_SUFFIX = Pattern.compile("^.*(\\.v(\\d+(?:\\.\\d+)?))$");
+
+	private static final String METADATA_SUFFIX = ".metadata.properties.xml";
+
+	private static final int METADATA_SUFFIX_LENGTH = METADATA_SUFFIX.length();
 
 	@XmlElement(name = "directory", required = true)
 	protected boolean directory;
@@ -76,6 +78,28 @@ public class CacheItem
         }
     }
     
+    private String extractName(String name)
+    {
+		// The source name will be the basename for the source file (minus extension)
+		String sourceName = FilenameUtils.getName(name);
+
+		// If it ends with vXX or vXX.XX, remove the version tag...
+		Matcher m = VERSION_SUFFIX.matcher(sourceName);
+		if (m.matches())
+		{
+			sourceName = sourceName.substring(0, m.start(1));
+		}
+
+		// If it's a metadata file, then remove the suffix
+		if (sourceName.endsWith(METADATA_SUFFIX))
+		{
+			sourceName = sourceName.substring(0, sourceName.length() - METADATA_SUFFIX_LENGTH);
+		}
+
+		// Return the resulting name
+		return sourceName;
+    }
+
     private void populateFromOldVersion()
     {
     	// Old XML version... convert!
@@ -84,20 +108,9 @@ public class CacheItem
 		CacheItemVersion v = versions.get(0);
 
 		// It'll have at least one of content and metadata, else what's the reason for its existence?
-		String vname = v.getContent();
-		if (StringUtils.isEmpty(vname)) vname = v.getMetadata();
+		sourceName = extractName(v.getContent());
+		if (StringUtils.isEmpty(sourceName)) sourceName = extractName(v.getMetadata());
 
-		// The source name will be the basename for the source file (minus extension)
-		sourceName = FilenameUtils.getName(vname);
-		// If it ends with vXX or vXX.XX, remove the version tag...
-		Matcher m = VERSION_SUFFIX.matcher(sourceName);
-		if (m.matches())
-		{
-			// If there's a version suffix, we remove it...
-			String suffix = m.group(1);
-			sourceName = sourceName.substring(0, sourceName.length() - suffix.length());
-		}
-		
     	sourcePath = fsRelativePath;
 
     	// These two are straight shots
